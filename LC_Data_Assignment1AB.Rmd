@@ -1,0 +1,949 @@
+---
+title: "Assignment 1A - Lending Club Case"
+output: html_document
+---
+
+```{r}
+#Import Data
+library(tidyverse)
+library(lubridate)
+library(data.table)
+library(broom)
+options(dplyr.summarise.inform = FALSE)
+
+#Importing data and saving it in a variable name.
+LC_Data <- read_csv('lcData100K.csv')
+
+```
+
+
+```{r, Question 2(a)(i)}
+#Question 2 - Data Exploration 
+#Question 2(a) - (i) 
+
+#What is the proportion of defaults (‘charged off’ vs ‘fully paid’ loans) in the data?
+Prop_of_defaults <- LC_Data %>% group_by(loan_status)%>%summarise(n=n())%>%mutate(freq=n/sum(n)*100)
+setnames(Prop_of_defaults, old = c('loan_status','n'), new = c('loanStatus','totalCount'))
+print(Prop_of_defaults)
+
+#Bar graph to visualize the proportion. 
+ggplot(LC_Data,aes(x=loan_status)) + geom_bar()
+
+#Pie chart representaion of the proportion of defaults.
+lbls <- Prop_of_defaults$'loanStatus'
+slices <- Prop_of_defaults$totalCount
+pie(slices, labels = lbls, main="Proportion")
+
+#Proportion of default rate by Grade:
+
+defaultBygrade<-LC_Data%>%group_by(grade,loan_status)%>%summarise(n=n())%>%mutate(freq=n/sum(n)*100)
+setnames(defaultBygrade, old = c('loan_status','n'), new = c('loanStatus','totalCount'))
+print(defaultBygrade)
+
+#Line graph representation of Fully paid% with Grade. 
+defaultBygrade=filter(defaultBygrade, loanStatus=="Fully Paid")
+ggplot(data=defaultBygrade, aes(x=grade, y=freq, group=1)) +
+  geom_line()+
+  geom_point()+labs(y="Fully Paid %", x = "Grade")
+
+
+#Proportion of default rate by SubGrade:
+
+defaultBysubgrade<-LC_Data%>%group_by(sub_grade,loan_status)%>%summarise(n=n())%>%mutate(freq=n/sum(n)*100)
+setnames(defaultBysubgrade, old = c('loan_status','n'), new = c('loanStatus','totalCount'))
+print(defaultBysubgrade)
+
+#Line graph representation of Fully paid% with Grade. 
+defaultBysubgrade=filter(defaultBysubgrade, loanStatus=="Fully Paid")
+ggplot(data=defaultBysubgrade, aes(x=sub_grade, y=freq, group=1)) +
+  geom_line()+
+  geom_point()+labs(y="Fully Paid %", x = "Sub Grade")
+
+
+```
+
+
+```{r, Question 2(a)(i)}
+#How does default rate vary with loan grade? Does it vary with sub-grade? And is this what you would expect, and why?
+
+
+Defaultrate_LoanGrade <- LC_Data %>% group_by(grade) %>% tally()
+setnames(Defaultrate_LoanGrade, old = c('grade','n'), new = c('Grade','Default Rate'))
+print(Defaultrate_LoanGrade)
+
+Defaultrate_LoanSubGrade <- LC_Data %>% group_by(sub_grade) %>% tally()
+
+setnames(Defaultrate_LoanSubGrade, old = c('sub_grade','n'), new = c('Sub Grade','Default Rate'))
+print(Defaultrate_LoanSubGrade)
+
+#Bar graph showing the distribution of grades with loan status.
+ggplot(LC_Data,aes(x= grade, fill = loan_status)) + geom_bar(position = "fill")+ labs(y="Loan Status", x = "Grade")
+
+#Bar graph showing the distribution of sub-grades with loan status.
+ggplot(LC_Data,aes(x= sub_grade, fill = loan_status)) + geom_bar(position = "fill") + labs(y="Loan Status", x = "Sub Grade")
+
+
+```
+
+
+```{r, Question 2(a)(ii)}
+#How many loans are there in each grade? And do loan amounts vary by grade?
+
+#Loans in each grade.
+
+LoansCount_EachGrade <- LC_Data %>% group_by(grade) %>% tally()
+setnames(LoansCount_EachGrade, old = c('grade','n'), new = c('Grade','Count'))
+print(LoansCount_EachGrade)
+
+
+#Loans variation by grade.
+
+Loans_EachGrade <- LC_Data %>% group_by(grade) %>% summarise(sum(loan_amnt))
+setnames(Loans_EachGrade, old = c('grade','sum(loan_amnt)'), new = c('Grade','Sum of amounts'))
+print(Loans_EachGrade)  
+
+#Loans variation by sub-grade.
+Loans_EachSubGrade <- LC_Data %>% group_by(sub_grade) %>% summarise(sum(loan_amnt))
+setnames(Loans_EachSubGrade, old = c('sub_grade','sum(loan_amnt)'), new = c('Sub Grade','Sum of amounts'))
+print(Loans_EachSubGrade)  
+
+#Graph view- segregating Charged off vs Fully Paid
+ggplot(LC_Data, aes( x = loan_amnt)) + geom_histogram(aes(fill=grade)) + facet_wrap(~loan_status)
+
+#Calculating mean interest to compare with grade and subgrade. 
+#Comparison with Grade
+int_bygrade <- LC_Data %>% group_by(grade) %>% summarise(InterestRate = mean(int_rate))
+print(int_bygrade)
+
+#Comparison with Subgrade
+int_bysubgrade <- LC_Data %>% group_by(sub_grade) %>% summarise(InterestRateSubgrade = mean(int_rate))
+print(int_bysubgrade)
+
+#Plot for mean Interest rate with grade.
+ggplot(int_bygrade,aes(x=grade, y =InterestRate, group =1)) + geom_line() + geom_point()
+
+#Plot for mean Interest rate with sub grade.
+ggplot(int_bysubgrade,aes(x=sub_grade, y =InterestRateSubgrade, group =1)) + geom_line() + geom_point()
+
+
+```
+
+
+```{r, Question 2(a)(ii)}
+
+#Summary for Average and standard-deviation of Interest rate by grade and subgrade.
+
+characteristics_intRate_grade <- LC_Data %>% group_by(grade) %>% summarise(numLoans=n(), avgInterest = mean(int_rate), std_dev_Interest = sd(int_rate))
+print(characteristics_intRate_grade)
+
+characteristics_intRate_subgrade <- LC_Data %>% group_by(sub_grade) %>% summarise(numLoans=n(), avgInterest = mean(int_rate), std_dev_Interest = sd(int_rate))
+print(characteristics_intRate_subgrade)
+
+
+mean_int <- LC_Data %>% group_by(grade,sub_grade) %>% summarise(mean_intRate = mean(int_rate))
+print(mean_int)
+
+#Line plot for Standard dev of int rate versus grades of loans.
+ggplot(characteristics_intRate_grade,aes(x=grade, y =std_dev_Interest, group =1)) + geom_line() + geom_point() 
+
+#Line plot for Standard dev of int rate versus sub grades of loans.
+ggplot(characteristics_intRate_subgrade,aes(x=sub_grade, y =std_dev_Interest, group =1)) + geom_line() + geom_point()
+
+
+#Minimum interest rates for each grades and subgrades
+min_intRate_grade <-LC_Data %>% group_by(grade) %>% summarize(min(int_rate))
+print(min_intRate_grade)
+
+min_intRate_subgrade <-LC_Data %>% group_by(sub_grade) %>% summarize(min(int_rate))
+print(min_intRate_subgrade)
+
+
+#Maximum interest rates for each grades and subgrades
+max_intRate_grade <-LC_Data %>% group_by(grade) %>% summarize(max(int_rate))
+print(max_intRate_grade)
+
+max_intRate_subgrade <-LC_Data %>% group_by(sub_grade) %>% summarize(max(int_rate))
+print(max_intRate_subgrade)
+
+
+
+```
+
+
+```{r, Question 2(a)(iii)}
+
+#Data For loans fully paid - time-to-payoff  
+
+head(LC_Data[, c("last_pymnt_d", "issue_d")])
+
+LC_Data$last_pymnt_d<-paste(LC_Data$last_pymnt_d, "-01", sep = "")
+#     Then convert this character to a date type variable
+LC_Data$last_pymnt_d<-parse_date_time(LC_Data$last_pymnt_d,  "myd")
+
+head(LC_Data[, c("last_pymnt_d", "issue_d")])
+
+
+LC_Data$actualTerm <- ifelse(LC_Data$loan_status=="Fully Paid", as.duration(LC_Data$issue_d  %--% LC_Data$last_pymnt_d)/dyears(1), 3)
+
+
+print(LC_Data$actualTerm)
+ggplot(LC_Data, aes(x=actualTerm, y=grade)) + geom_boxplot()+coord_flip()+labs(y="Grade", x = "Average Actual Term")
+
+dim(LC_Data)
+
+```
+
+
+```{r, Question 2(a)(iv)}
+
+#Annualized percent return:
+#LC_Data$annRet <- ((LC_Data$total_pymnt
+#                    -LC_Data$funded_amnt)/LC_Data$funded_amnt)*(12/36)*100
+#print(LC_Data$annRet)
+
+#Actual Annual Return percentage
+LC_Data$annRet <- ifelse(LC_Data$actualTerm>0, (((LC_Data$total_pymnt-LC_Data$funded_amnt)/LC_Data$funded_amnt)/LC_Data$actualTerm)*100,0)
+
+
+AnnualRetrun <- ((LC_Data$total_pymnt -LC_Data$funded_amnt)/LC_Data$funded_amnt)*(12/36)*100
+
+#Return from charged off loans vary by loan grades
+
+LC_Data$return = LC_Data$total_pymnt-LC_Data$funded_amnt
+LC_Data$returnperyear = (LC_Data$return/LC_Data$funded_amnt)/3*100
+
+#Table for return per year  - grade and loan status. 
+return_defaults<-LC_Data%>%group_by(grade,loan_status)%>%summarise(return_peryear=mean(returnperyear))
+print(return_defaults)
+
+#Table for returns per year from default loans  - grade.
+retdef=filter(LC_Data, loan_status=="Charged Off")
+returns_defaults<-retdef%>%group_by(grade)%>%summarise(mean_returnperyear=mean(returnperyear),sd_returnper=sd(returnperyear),min_returnperyear=min(returnperyear),max_returnperyear=max(returnperyear)) 
+print(returns_defaults)
+
+ret_loan_status<-LC_Data%>%group_by(loan_status)%>%summarise(mean_returnperyear=mean(returnperyear),sd_returnperyear=sd(returnperyear),min_returnperyear=min(returnperyear),
+                                                   max_returnper=max(returnperyear)) 
+
+ggplot(data=ret_loan_status, aes(x=loan_status, y=mean_returnperyear, group=1)) +
+  geom_line()+
+  geom_point()+labs(y="Average Annual Return", x = "Loan Status")
+
+returns_grade<-LC_Data%>%group_by(grade)%>%summarise(mean_returnperyear=mean(returnperyear),sd_returnperyear=sd(returnperyear),min_returnperyear=min(returnperyear),max_returnperyear=max(returnperyear)) 
+print(returns_grade)
+
+#Line plot for return from loans versus grades. 
+ggplot(returns_grade, aes(x=grade, y=mean_returnperyear,group =1)) + geom_line()+geom_point() +labs(y="Mean return from loans", x = "Grade")
+
+#Return from loans vary by loan sub grades
+return_subgrade<-LC_Data%>%group_by(sub_grade)%>%summarise(mean_returnperyear=mean(returnperyear),sd_returnperyear=sd(returnperyear),min_returnperyear=min(returnperyear),max_returnperyear=max(returnperyear)) 
+print(return_subgrade)
+
+
+#Line plot for return from loans versus sub grades. 
+ggplot(return_subgrade, aes(x=sub_grade, y=mean_returnperyear,group =1)) + geom_line()+geom_point() +labs(y="Mean return from loans", x = "Sub Grade")
+
+
+#Average returns versus Average interest rate:
+
+returns_intRate_grade<-LC_Data%>%group_by(grade)%>%summarise(mean_returnperyear=mean(returnperyear),avgIntrate=mean(int_rate))
+print(returns_intRate_grade)
+
+returns_intRate_subgrade<-LC_Data%>%group_by(sub_grade)%>%summarise(mean_returnperyear=mean(returnperyear),avgIntrate=mean(int_rate))
+print(returns_intRate_subgrade)
+
+dim(LC_Data)
+
+```
+
+
+```{r, Question 2(a)(v)}
+
+#Loans granted versus purpose.
+purpose_loan<-LC_Data%>%group_by(purpose)%>%summarise(n=n(),mean_loan=mean(loan_amnt))%>%mutate(freq=n/sum(n)*100)
+setnames(purpose_loan, old = c('purpose','n'), new = c('Purpose','totalCount'))
+print(purpose_loan)
+
+#Loan status versus purpose.
+purpose_loan_status<-LC_Data%>%group_by(purpose,loan_status)%>%summarise(n=n(),mean_loan=mean(loan_amnt))%>%mutate(freq=n/sum(n)*100)
+print(purpose_loan_status)
+
+ggplot(data=purpose_loan_status, aes(x=purpose, y=mean_loan, group=1)) +
+  geom_line(linetype = "dashed")+
+  geom_point()+labs(y="Average Loan Amount", x = "Purpose")
+
+
+#Loan grade versus purpose.
+purpose_loan_grade<-LC_Data%>%group_by(purpose,grade)%>%summarise(n=n(),mean_loan=mean(loan_amnt))%>%mutate(freq=n/sum(n)*100)
+print(purpose_loan_grade)
+
+```
+
+
+```{r, Question 2(a)(vi)}
+#Employment period versus Mean Loan amount:
+emply_loanamt<-LC_Data%>%group_by(emp_length)%>%summarise(n=n(),mean_loan=mean(loan_amnt))
+print(emply_loanamt)
+ggplot(data=emply_loanamt, aes(x=emp_length, y=mean_loan, group=1)) +
+  geom_line()+geom_point() + labs(y="Mean Loan amount", x = "Employment Length")
+
+
+#Employment length versus grade:
+emply_grade<-LC_Data%>%group_by(emp_length,grade)%>%summarise(n=n(),mean_loan=mean(loan_amnt))
+print(emply_grade)
+
+#Employment length versus purpose
+emply_purpose<-LC_Data%>%group_by(emp_length,purpose)%>%summarise(n=n(),mean_loan=mean(loan_amnt))
+print(emply_purpose)
+
+#Annual income versus purpose
+annInc_pur<-LC_Data%>%group_by(purpose)%>%summarise(n=n(),mean_anninc=mean(annual_inc))
+print(annInc_pur)
+
+#Annual income versus Grade:
+annInc_grade<-LC_Data%>%group_by(grade)%>%summarise(n=n(),mean_anninc=mean(annual_inc))
+print(annInc_grade)
+ggplot(data=annInc_grade, aes(x=grade, y=mean_anninc, group=1)) +
+  geom_line()+geom_point() + labs(y="Mean Annual Income", x = "Grade")
+
+dim(LC_Data)
+
+```
+
+
+```{r, Question 2(a)(vii)}
+
+#Generate some (at least 3) new derived attributes which you think may be useful for predicting default., and explain what these are. For these, do an analyses as in the questions above (as reasonable based on the derived variables).
+
+#Derived attribute-1: proportion of satisfactory bankcard accounts 
+
+LC_Data$satisBankcardAccts_prop <- ifelse(LC_Data$num_bc_tl>0, LC_Data$num_bc_sats/LC_Data$num_bc_tl, 0)
+print(LC_Data$satisBankcardAccts_prop)
+
+#Derived Attribute-2: length of borrower's history with LC
+
+LC_Data$earliest_cr_line<-paste(LC_Data$earliest_cr_line, "-01", sep = "")
+LC_Data$earliest_cr_line<-parse_date_time(LC_Data$earliest_cr_line, "myd")
+LC_Data$borrHistory <- as.duration(LC_Data$earliest_cr_line %--% LC_Data$issue_d) /dyears(1)
+print(LC_Data$borrHistory)
+
+
+
+#Derived attribute-3: ratio of open Accounts to total Accounts
+LC_Data$openAccRatio <- ifelse(LC_Data$total_acc>0, LC_Data$open_acc/LC_Data$total_acc, 0)
+print(LC_Data$openAccRatio)
+
+#Summary with line plot for openAccRatio with Grade
+openAcc_Grade <- LC_Data %>% group_by(grade) %>% summarise(openAcc_Ratio=mean(openAccRatio))
+print(openAcc_Grade)
+ggplot(openAcc_Grade, aes(x=grade, y=openAcc_Ratio,group=1)) + geom_line() + geom_point()
+
+
+#Summary with line plot for openAccRatio with loan status.
+openAcc_loanstat<-LC_Data %>% group_by(loan_status) %>% summarise(avgOpenAccRatio=mean(openAccRatio))
+print(openAcc_loanstat)
+ggplot(openAcc_loanstat, aes(x=loan_status, y=avgOpenAccRatio,group=1)) + geom_line() + geom_point()
+
+#Derived attribute-4: Balance amount to pay
+
+LC_Data$balance_to_pay <- LC_Data$funded_amnt - LC_Data$total_pymnt
+print(LC_Data$balance_to_pay)
+
+bal_to_paygrade<-LC_Data%>%group_by(grade)%>%summarise(balLeft=sum(balance_to_pay))
+print(bal_to_paygrade)
+
+
+bal_to_paysubgrade<-LC_Data%>%group_by(sub_grade)%>%summarise(balLeft=sum(balance_to_pay))
+print(bal_to_paysubgrade)
+
+#Line plot for Balance left by grades.
+ggplot(bal_to_paygrade, aes(x=grade, y=balLeft,group=1)) + geom_line() + geom_point()
+
+#Line plot for Balance left by subgrades.
+ggplot(bal_to_paysubgrade, aes(x=sub_grade, y=balLeft,group=1)) + geom_line() + geom_point()
+
+
+# negative values indicate most of the loans are paid off and with some interest rate. Thta's why total payment exceeds the funded amount
+#for positive values the loan is charged off
+
+
+#LC assigned Grade variation by borrow History
+loan_v_borrow <- LC_Data %>% group_by(grade) %>% summarise(avgBorrHist=mean(borrHistory))
+loan_v_borrow
+
+#plot to understand variation between borrow history and grade
+ggplot(loan_v_borrow, aes(x=grade, y=avgBorrHist,group=1)) + geom_line() + geom_point()
+
+#Summary with line plot for mean borrHistory with Loan status.
+
+
+borrHis_grade<-LC_Data %>% group_by(loan_status) %>% summarise(avgBorrHist=mean(borrHistory))
+print(borrHis_grade)
+ggplot(borrHis_grade, aes(x=loan_status, y=avgBorrHist,group=1)) + geom_line() + geom_point()
+
+
+
+
+LC_Data %>% group_by(grade) %>%summarise(avgSatisBankCard_prop=mean(satisBankcardAccts_prop))
+
+dim(LC_Data)
+
+```
+
+
+
+
+
+```{r,question-2-c}
+
+#(c) Are there missing values? What is the proportion of missing values in different variables?
+
+dim(LC_Data)
+
+#Drop col's with all empty values into new data frame -lcdf
+lcdf <- LC_Data %>% select_if(function(x){!all(is.na(x))})
+
+dim(lcdf)
+
+#columns where there are missing values
+colMeans(is.na(lcdf))[colMeans(is.na(lcdf))>0]
+
+lcdf <- lcdf %>% select(-names(lcdf)[colMeans(is.na(lcdf))>0.6])
+dim(lcdf)
+
+
+#Check where the missing values are present
+names(colMeans(is.na(lcdf))[colMeans(is.na(lcdf))>0])
+
+#variable imputation
+
+lcdf<- lcdf %>% replace_na(list(bc_open_to_buy=median(lcdf$bc_open_to_buy, na.rm=TRUE), num_tl_120dpd_2m = median(lcdf$num_tl_120dpd_2m, na.rm=TRUE),percent_bc_gt_75 = median(lcdf$percent_bc_gt_75, na.rm=TRUE), bc_util=median(lcdf$bc_util, na.rm=TRUE) ))
+
+
+names(colMeans(is.na(lcdf))[colMeans(is.na(lcdf))>0])
+
+dim(lcdf)
+
+```
+
+```{r , question3}
+
+#3. Consider the potential for data leakage. You do not want to include variables in your model which may not be available when applying the model; that is, some data may not be available for new loans before they are funded. Leakage may also arise from variables in the data which may have been updated during the loan period (ie., after the loan is funded). Identify and explain which variables will you exclude from the model.
+
+# new data after considering for leakage
+new_data <- lcdf %>% select(-c(funded_amnt_inv, term, emp_title, pymnt_plan, title, zip_code, addr_state, out_prncp, out_prncp_inv, total_pymnt_inv, total_rec_prncp, total_rec_int,total_rec_late_fee,recoveries, collection_recovery_fee, last_credit_pull_d, policy_code, disbursement_method, debt_settlement_flag, hardship_flag, application_type))
+
+#removing additional variables which are not present in the 
+new_data <- new_data %>% select(-c(last_pymnt_d, last_pymnt_amnt))
+
+dim(new_data)
+
+
+names(colMeans(is.na(new_data))[colMeans(is.na(new_data))>0])
+
+new_data <- new_data %>% select(-c(return,returnperyear))
+```
+
+
+```{r ,question4}
+
+#Do a univariate analyses to determine which variables (from amongst those you decide to consider for the next stage prediction task) will be #individually useful for predicting the dependent variable (loan_status). For this, you need a measure of relationship between the dependent #variable and each of the potential predictor variables. Given loan-status as a binary dependent variable, which measure will you use? From your #analyses using this measure, which variables do you think will be useful for predicting loan_status? (Note – if certain variables on their own #are highly predictive of the outcome, it is good to ask if this variable has a leakage issue).
+
+
+library(pROC) #importing the package which has AUC(..) function
+
+#Using sapply function to apply AUC curve on the variables
+#considered both numeric and factor variables.
+# we need numeric variables to calculate the area under the curve
+
+head(new_data$earliest_cr_line)
+
+new_data$earliest_cr_line <- as.Date(new_data$earliest_cr_line)
+new_data$issue_d <- as.Date(new_data$issue_d)
+new_data <- mutate_if(new_data, is.character, as.factor)
+
+
+#dropping the loan status variable
+ds_train <- new_data %>% select(-c(loan_status))
+
+aucAll<- sapply(ds_train %>% mutate_if(is.factor, as.numeric) %>% select_if(is.numeric), auc, response = new_data$loan_status)
+
+#To determine which variables have AUC > 0.5
+length(aucAll[aucAll>0.5])
+
+selected_col<-names(aucAll[aucAll>0.5])
+
+selected_col <- append(selected_col,"loan_status")
+
+# adding the loan status variable
+new_data <- new_data %>% select((selected_col))
+
+
+library(broom)
+
+#view a table output 
+tidy(aucAll[aucAll > 0.5]) %>% view()
+
+#arranging auc curve values in descending order 
+tidy(aucAll) %>% arrange(desc(aucAll))
+
+```
+
+
+```{r , question 5a}
+new_dt=new_data
+
+glimpse(new_data)
+
+##pre-preprocessing data steps
+
+#removing variables like actualTerm, actualRetrun
+
+# excluding certain elements from the dataset because of data leakage issue. 
+new_data2=new_data
+new_data1 <- new_data%>%select(-c(annRet,total_pymnt, balance_to_pay))
+
+new_data1 <- new_data1%>%select(-c(grade))
+
+new_data1 <- new_data1%>%select(-c(actualTerm,funded_amnt))
+
+names(colMeans(is.na(new_data1)))[colMeans(is.na(new_data1))>0]
+
+
+
+#replacing some of the missing NA values in the columns by median values
+
+new_data1<- new_data1 %>% replace_na(list(mths_since_last_delinq=median(new_data1$mths_since_last_delinq, na.rm=TRUE),
+                                     revol_util = median(new_data1$revol_util, na.rm=TRUE),
+                                     avg_cur_bal = median(new_data1$avg_cur_bal, na.rm=TRUE),
+                                     mths_since_recent_bc = median(new_data1$mths_since_recent_bc, na.rm=TRUE),
+                                     mths_since_recent_inq = median(new_data1$mths_since_recent_inq, na.rm=TRUE),
+                                     num_rev_accts = median(new_data1$num_rev_accts, na.rm=TRUE),
+                                     pct_tl_nvr_dlq = median(new_data1$pct_tl_nvr_dlq, na.rm=TRUE),
+                                     mo_sin_old_il_acct=median(new_data1$mo_sin_old_il_acct, na.rm=TRUE) ))
+
+names(colMeans(is.na(new_data1)))[colMeans(is.na(new_data1))>0]
+
+new_data1$loan_status <- factor(new_data1$loan_status)#, levels=c("Fully Paid", "Charged Off"))
+
+dim(new_data1)
+
+library(rpart)
+library(rpart.plot)
+library(ranger)
+
+
+#Splitting data into 70% training and 30%  testing ratio. 
+
+PROP = 0.7  #proportion of examples in the training sample
+nr<-nrow(new_data1)
+trnIndex<- sample(1:nr, size = round(PROP * nr), replace=FALSE)
+
+final_dataTrn <- new_data1[trnIndex, ]
+final_dataTst <- new_data1[-trnIndex, ]
+
+names(new_data1)
+
+
+```
+
+
+
+```{r, question 5b}
+
+set.seed(673)
+
+lcDT1 <- rpart(loan_status ~., data=final_dataTrn, method="class", parms = list(split = "information"), control = rpart.control(cp=-1))
+printcp(lcDT1)
+
+plotcp(lcDT1)
+
+library(ROCR)
+library(caret)
+
+#model 1
+lcDT1_1 <- rpart(loan_status ~., data=final_dataTrn, method="class", parms = list(split = "information"), control = rpart.control(cp=0.00019279))
+
+
+#ROC plot
+score=predict(lcDT1_1,final_dataTst, type="prob")[,"Charged Off"]
+pred=prediction(score, final_dataTst$loan_status, label.ordering = c("Fully Paid", "Charged Off"))
+    #label.ordering here specifies the 'negative', 'positive' class labels   
+
+#ROC curve
+aucPerf <-performance(pred, "tpr", "fpr")
+plot(aucPerf)
+abline(a=0, b= 1)
+
+#AUC value
+aucPerf=performance(pred, "auc")
+aucPerf@y.values
+
+
+#Lift curve
+liftPerf <-performance(pred, "lift", "rpp")
+plot(liftPerf)
+
+test_preds = predict(lcDT1_1,final_dataTst, type="prob")
+thrsh = 0.5
+test_preds <- ifelse(test_preds[,1] > thrsh, "Charged Off", "Fully Paid")
+confusionMatrix(factor(test_preds,levels=c('Charged Off','Fully Paid')),final_dataTst$loan_status,positive = "Charged Off")
+
+
+##model 2
+
+lcDT1_2 <- rpart(loan_status ~., data=final_dataTrn, method="class", parms = list(split = "information"), control = rpart.control(cp= 0.00017302))
+
+
+#ROC plot
+score=predict(lcDT1_2,final_dataTst, type="prob")[,"Charged Off"]
+pred=prediction(score, final_dataTst$loan_status, label.ordering = c("Fully Paid", "Charged Off"))
+    #label.ordering here specifies the 'negative', 'positive' class labels   
+
+#ROC curve
+aucPerf <-performance(pred, "tpr", "fpr")
+plot(aucPerf)
+abline(a=0, b= 1)
+
+#AUC value
+aucPerf=performance(pred, "auc")
+aucPerf@y.values
+
+
+#Lift curve
+liftPerf <-performance(pred, "lift", "rpp")
+plot(liftPerf)
+
+test_preds = predict(lcDT1_2,final_dataTst, type="prob")
+thrsh = 0.5
+test_preds <- ifelse(test_preds[,1] > thrsh, "Charged Off", "Fully Paid")
+confusionMatrix(factor(test_preds,levels=c('Charged Off','Fully Paid')),final_dataTst$loan_status,positive = "Charged Off")
+
+
+##model 3
+
+lcDT1_3 <- rpart(loan_status ~., data=final_dataTrn, method="class", parms = list(split = "information"), control = rpart.control(cp= 0.000057672))
+
+
+#ROC plot
+score=predict(lcDT1_3,final_dataTst, type="prob")[,"Charged Off"]
+pred=prediction(score, final_dataTst$loan_status, label.ordering = c("Fully Paid", "Charged Off"))
+    #label.ordering here specifies the 'negative', 'positive' class labels   
+
+#ROC curve
+aucPerf <-performance(pred, "tpr", "fpr")
+plot(aucPerf)
+abline(a=0, b= 1)
+
+#AUC value
+aucPerf=performance(pred, "auc")
+aucPerf@y.values
+
+
+#Lift curve
+liftPerf <-performance(pred, "lift", "rpp")
+plot(liftPerf)
+
+test_preds = predict(lcDT1_3,final_dataTst, type="prob")
+thrsh = 0.5
+test_preds <- ifelse(test_preds[,1] > thrsh, "Charged Off", "Fully Paid")
+confusionMatrix(factor(test_preds,levels=c('Charged Off','Fully Paid')),final_dataTst$loan_status,positive = "Charged Off")
+
+
+
+
+
+```
+
+
+
+
+```{r, balancing the dataset and perfoming DT}
+
+set.seed(673)
+
+library(ROSE)
+
+balanced_train <- ovun.sample(loan_status ~ ., data = final_dataTrn, method = "over",N = 120000)$data
+round(100*prop.table(table(balanced_train$loan_status)),digits=2)
+
+#Now that we have over sampled the charged off data. We can use the above balanced train set to train our model and test our specivity and accuracy again.
+
+dt_model <- rpart(loan_status ~., data=balanced_train, method="class", parms = list(split = "information"), control = rpart.control(cp=-1))
+
+plotcp(dt_model)
+printcp(dt_model)
+
+#Decision Tree
+dt_model <- rpart(loan_status ~., data=balanced_train, method="class", parms = list(split = "infomration"), control = rpart.control(minsplit = 50,minbucket = 35, cp=0.0000083846))
+
+printcp(dt_model)
+plotcp(dt_model)
+
+#Classification method
+test_preds<-predict(dt_model,final_dataTst, type='class')
+confusionMatrix(factor(test_preds,levels=c('Charged Off','Fully Paid')),final_dataTst$loan_status,positive = "Charged Off")
+
+
+#Probability Method
+test_preds<-predict(dt_model,final_dataTst, type='prob')[,'Charged Off']
+pred=prediction(test_preds, final_dataTst$loan_status, label.ordering = c("Fully Paid", "Charged Off"))  #label.ordering = (negative class, positive class)
+
+
+#ROC curve
+roc_curve <-performance(pred, "tpr", "fpr")
+plot(roc_curve)
+abline(a=0, b= 1)
+
+#AUC value
+auc_score<-performance(pred, "auc")
+auc_score@y.values
+
+
+#Lift curve
+liftPerf <-performance(pred, "lift", "rpp")
+plot(liftPerf)
+
+
+## performing tests on training data
+
+#Classification method
+test_preds<-predict(dt_model,balanced_train, type='class')
+confusionMatrix(factor(test_preds,levels=c('Charged Off','Fully Paid')),balanced_train$loan_status,positive = "Charged Off")
+
+
+#Probability Method
+test_preds<-predict(dt_model,balanced_train, type='prob')[,'Charged Off']
+pred=prediction(test_preds, balanced_train$loan_status, label.ordering = c("Fully Paid", "Charged Off"))  #label.ordering = (negative class, positive class)
+
+
+#ROC curve
+roc_curve <-performance(pred, "tpr", "fpr")
+plot(roc_curve)
+abline(a=0, b= 1)
+
+#AUC value
+auc_score<-performance(pred, "auc")
+auc_score@y.values
+
+
+#Lift curve
+liftPerf <-performance(pred, "lift", "rpp")
+plot(liftPerf)
+
+```
+
+
+
+```{r, c50 model}
+
+library(C50)
+
+set.seed(673)
+
+#C50
+C50_model<-C5.0.default(x = balanced_train %>% select(-loan_status), y = balanced_train$loan_status, control = C5.0Control(minCases = 50, CF=0.6))
+
+#On test data
+test_preds<-predict(C50_model,final_dataTst %>% select(-loan_status))
+
+confusionMatrix(factor(test_preds,levels=c('Charged Off','Fully Paid')),final_dataTst$loan_status,positive = "Charged Off")
+
+test_preds<-predict(C50_model,final_dataTst, type='prob')[,'Charged Off']
+pred=prediction(test_preds, final_dataTst$loan_status, label.ordering = c("Fully Paid", "Charged Off"))
+
+#ROC curve
+roc_curve <-performance(pred, "tpr", "fpr")
+plot(roc_curve)
+abline(a=0, b= 1)
+#AUC value
+auc_score<-performance(pred, "auc")
+auc_score@y.values
+#Lift curve
+liftPerf <-performance(pred, "lift", "rpp")
+plot(liftPerf)
+
+
+
+#On Training
+train_preds<-predict(C50_model,balanced_train %>% select(-loan_status))
+#table(pred = test_preds, true=test_ds$loan_status)
+confusionMatrix(factor(train_preds,levels=c('Charged Off','Fully Paid')),balanced_train$loan_status,positive = "Charged Off")
+
+train_preds_<-predict(C50_model,balanced_train, type='prob')[,'Charged Off']
+pred=prediction(train_preds_, balanced_train$loan_status, label.ordering = c("Fully Paid", "Charged Off"))  #label.ordering = (negative class, positive class)
+
+#ROC curve
+roc_curve <-performance(pred, "tpr", "fpr")
+plot(roc_curve)
+abline(a=0, b= 1)
+#AUC value
+auc_score<-performance(pred, "auc")
+auc_score@y.values
+#Lift curve
+liftPerf <-performance(pred, "lift", "rpp")
+plot(liftPerf)
+
+C5imp(C50_model)
+
+```
+
+
+```{r ,question6}
+
+# excluding certain elements from the dataset because of data leakage issue. 
+
+new_data1 <- new_dt%>%select(-c(annRet,actualTerm,total_pymnt, balance_to_pay))
+
+names(colMeans(is.na(new_data1)))[colMeans(is.na(new_data1))>0]
+
+
+cc<-table( new_data1$loan_status, replace_na( new_data1$mths_since_recent_inq , "missing") )
+cc[1,]/(cc[2,]+cc[1,])
+
+#replacing some of the missing NA values in the columns by median values
+
+new_data1<- new_data1 %>% replace_na(list(mths_since_last_delinq=median(new_data1$mths_since_last_delinq, na.rm=TRUE),
+                                     revol_util = median(new_data1$revol_util, na.rm=TRUE),
+                                     avg_cur_bal = median(new_data1$avg_cur_bal, na.rm=TRUE),
+                                     mths_since_recent_bc = median(new_data1$mths_since_recent_bc, na.rm=TRUE),
+                                     mths_since_recent_inq = median(new_data1$mths_since_recent_inq, na.rm=TRUE),
+                                     num_rev_accts = median(new_data1$num_rev_accts, na.rm=TRUE),
+                                     pct_tl_nvr_dlq = median(new_data1$pct_tl_nvr_dlq, na.rm=TRUE),
+                                     mo_sin_old_il_acct=median(new_data1$mo_sin_old_il_acct, na.rm=TRUE) ))
+
+names(colMeans(is.na(new_data1)))[colMeans(is.na(new_data1))>0]
+
+
+library(ranger)
+
+#Splitting data into 70% training and 30%  testing ratio. 
+
+TRNPROP = 0.7  #proportion of examples in the training sample
+nr<-nrow(new_data1)
+trnIndex<- sample(1:nr, size = round(TRNPROP * nr), replace=FALSE)
+
+new_data1Trn <- new_data1[trnIndex, ]
+new_data1Tst <- new_data1[-trnIndex, ]
+
+#ran a  random forest based using ranger, splitrule is gini
+new_data1T1<- ranger(loan_status ~., data=new_data1Trn, classification = TRUE,
+                     num.trees =200, importance='permutation', probability = TRUE)
+
+sort(new_data1T1$variable.importance, decreasing = TRUE)
+#Making predictions and evaluating performance of the model
+#training data 
+#predicting values in training data
+
+predTrn<-predict(new_data1T1,new_data1Trn, type='response') # type response as a classification 
+
+# we get the predictions of charged off and fully paid loans in the form of probabilities. 
+#Next we compare if probability of charged off is greated than fully charged(thatis 50% threshold value) then loan is 
+#charged off else fully paid
+
+predictions<- ifelse (predTrn$predictions[,"Charged Off"]>predTrn$predictions[,"Fully Paid"],"Charged Off","Fully Paid")
+#Performance Evaluation
+#creating a confusion matrix
+
+CM<-table(pred = predictions, true=new_data1Trn$loan_status)
+CM
+mean(predictions == new_data1Trn$loan_status)
+#accuracy is around 98.8%
+
+# Calculating F1score
+
+precision <- CM[1,1]/(CM[1,1]+CM[1,2])
+recall <- CM[1,1]/(CM[1,1]+CM[2,1])
+F1 <- (2 * precision * recall) / (precision + recall)
+F1
+#testing
+
+predTst=predict(new_data1T1,new_data1Tst, type='response') # type response as a classification 
+
+#when threshold of charged off >50%
+predictions<- ifelse (predTst$predictions[,"Charged Off"]>predTst$predictions[,"Fully Paid"],"Charged Off","Fully Paid")
+CM<-table(pred = predictions, true=new_data1Tst$loan_status)
+CM
+mean(predictions == new_data1Tst$loan_status)
+precision <- CM[1,1]/(CM[1,1]+CM[1,2])
+recall <- CM[1,1]/(CM[1,1]+CM[2,1])
+F1 <- (2 * precision * recall) / (precision + recall)
+F1
+#accuracy for test data is around 93.3%
+
+#altering number of trees in random forest for better precision using a loop
+trees.no<- c(1,2,3,4,5,10,15,20,30,40,50,60)
+pred<-c()
+F1score<-c()
+for (i in trees.no)
+  {
+  trial1<- ranger(loan_status ~., data=new_data1Trn, classification = TRUE,
+                     num.trees =i, importance='permutation', probability = TRUE)
+  predTst=predict(trial1,new_data1Tst, type='response') # type response as a classification 
+  predictions<- ifelse (predTst$predictions[,"Charged Off"]>predTst$predictions[,"Fully Paid"],"Charged Off","Fully  Paid")  
+  CM<-table(pred = predictions, true=new_data1Tst$loan_status)
+  precision <- CM[1,1]/(CM[1,1]+CM[1,2])
+  recall <- CM[1,1]/(CM[1,1]+CM[2,1])
+  F1 <- (2 * precision * recall) / (precision + recall)
+  pred<-append(pred,(CM[1,1]+CM[2,2])/length(predictions))
+  F1score<- append(F1score,F1)
+}
+
+
+plot(trees.no, pred, main="Number of Trees vs Pred",
+   xlab="Number of Trees ", ylab="Correct Predictions%", pch=19)
+plot(trees.no, F1score, main="Number of Trees vs F1score",
+   xlab="Number of Trees ", ylab="F1score", pch=19)
+
+#we observe that the model has highest accuracy and F1 score when number of trees is 10
+
+new_data1T1<- ranger(loan_status ~., data=new_data1Trn, classification = TRUE,
+                     num.trees =10, importance='permutation', probability = TRUE)
+#testing
+#Checking for different threshold values
+predTst=predict(new_data1T1,new_data1Tst, type='response') # type response as a classification 
+perc<-c(0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8) #array of threshold values
+pred1<-c()
+F1score1<-c()
+for (i in perc){ 
+predictions<- ifelse (predTst$predictions[,"Charged Off"]>i,"Charged Off","Fully Paid")
+CM<-table(pred = predictions, true=new_data1Tst$loan_status)
+precision <- CM[1,1]/(CM[1,1]+CM[1,2])
+recall <- CM[1,1]/(CM[1,1]+CM[2,1])
+F1 <- (2 * precision * recall) / (precision + recall)
+  pred1<-append(pred1,(CM[1,1]+CM[2,2])/length(predictions))
+  F1score1<- append(F1score1,F1)
+
+}
+plot(perc, pred1, main="Threshold value vs Prediction",
+   xlab="Threshold value ", ylab="Correct Predictions%", pch=19)
+plot(perc, F1score1, main="Threshold value vs F1score",
+   xlab="Threshold value ", ylab="F1score", pch=19)
+# we observe that at threshold value=0.4 we get the maximum accuracy and F1 score
+
+
+```
+
+
+```{r, question 7}
+
+PROFITVAL <- 24
+COSTVAL <- -35
+
+# Based on the models we have developed (rpart, c50, random forest), we are choosing c50 since the f1-score is best for c50 (Accuracy along with sensitivity).
+
+scoreTstRF <- predict(C50_model, final_dataTst, type="prob")[,"Fully Paid"]
+prPerfRF <- data.frame(scoreTstRF)
+prPerfRF <- cbind(prPerfRF, status=final_dataTst$loan_status)
+prPerfRF <- prPerfRF[order(-scoreTstRF) ,] #sort in desc order of prob(fully_paid)
+prPerfRF$profit <- ifelse(prPerfRF$status == 'Fully Paid', PROFITVAL, COSTVAL)
+prPerfRF$cumProfit <- cumsum(prPerfRF$profit)
+max(prPerfRF$cumProfit)
+prPerfRF[which.max(prPerfRF$cumProfit),]
+
+
+
+
+```
+
+
+
