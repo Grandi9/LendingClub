@@ -1,0 +1,1929 @@
+---
+title: "Assignment 2 - Models for investment decisions in LendingClub loans"
+output: html_document
+---
+
+```{r}
+#Import Data
+library(tidyverse)
+library(lubridate)
+library(data.table)
+library(broom)
+options(dplyr.summarise.inform = FALSE)
+
+#Importing data and saving it in a variable name.
+LC_Data <- read_csv('lcData100K.csv')
+
+
+# The first part of the code is taken from the Assignment-1 (Pre-processing, cleaning)
+
+```
+
+
+########### Code taken from Assignment 1
+
+
+```{r, Question 2(a)(i)}
+#Question 2 - Data Exploration 
+#Question 2(a) - (i) 
+
+#What is the proportion of defaults (‘charged off’ vs ‘fully paid’ loans) in the data?
+Prop_of_defaults <- LC_Data %>% group_by(loan_status)%>%summarise(n=n())%>%mutate(freq=n/sum(n)*100)
+setnames(Prop_of_defaults, old = c('loan_status','n'), new = c('loanStatus','totalCount'))
+print(Prop_of_defaults)
+
+#Bar graph to visualize the proportion. 
+ggplot(LC_Data,aes(x=loan_status)) + geom_bar()
+
+#Pie chart representaion of the proportion of defaults.
+lbls <- Prop_of_defaults$'loanStatus'
+slices <- Prop_of_defaults$totalCount
+pie(slices, labels = lbls, main="Proportion")
+
+#Proportion of default rate by Grade:
+
+defaultBygrade<-LC_Data%>%group_by(grade,loan_status)%>%summarise(n=n())%>%mutate(freq=n/sum(n)*100)
+setnames(defaultBygrade, old = c('loan_status','n'), new = c('loanStatus','totalCount'))
+print(defaultBygrade)
+
+#Line graph representation of Fully paid% with Grade. 
+defaultBygrade=filter(defaultBygrade, loanStatus=="Fully Paid")
+ggplot(data=defaultBygrade, aes(x=grade, y=freq, group=1)) +
+  geom_line()+
+  geom_point()+labs(y="Fully Paid %", x = "Grade")
+
+
+#Proportion of default rate by SubGrade:
+
+defaultBysubgrade<-LC_Data%>%group_by(sub_grade,loan_status)%>%summarise(n=n())%>%mutate(freq=n/sum(n)*100)
+setnames(defaultBysubgrade, old = c('loan_status','n'), new = c('loanStatus','totalCount'))
+print(defaultBysubgrade)
+
+#Line graph representation of Fully paid% with Grade. 
+defaultBysubgrade=filter(defaultBysubgrade, loanStatus=="Fully Paid")
+ggplot(data=defaultBysubgrade, aes(x=sub_grade, y=freq, group=1)) +
+  geom_line()+
+  geom_point()+labs(y="Fully Paid %", x = "Sub Grade")
+
+
+```
+
+
+```{r, Question 2(a)(i)}
+#How does default rate vary with loan grade? Does it vary with sub-grade? And is this what you would expect, and why?
+
+
+Defaultrate_LoanGrade <- LC_Data %>% group_by(grade) %>% tally()
+setnames(Defaultrate_LoanGrade, old = c('grade','n'), new = c('Grade','Default Rate'))
+print(Defaultrate_LoanGrade)
+
+Defaultrate_LoanSubGrade <- LC_Data %>% group_by(sub_grade) %>% tally()
+
+setnames(Defaultrate_LoanSubGrade, old = c('sub_grade','n'), new = c('Sub Grade','Default Rate'))
+print(Defaultrate_LoanSubGrade)
+
+#Bar graph showing the distribution of grades with loan status.
+ggplot(LC_Data,aes(x= grade, fill = loan_status)) + geom_bar(position = "fill")+ labs(y="Loan Status", x = "Grade")
+
+#Bar graph showing the distribution of sub-grades with loan status.
+ggplot(LC_Data,aes(x= sub_grade, fill = loan_status)) + geom_bar(position = "fill") + labs(y="Loan Status", x = "Sub Grade")
+
+
+```
+
+
+```{r, Question 2(a)(ii)}
+#How many loans are there in each grade? And do loan amounts vary by grade?
+
+#Loans in each grade.
+
+LoansCount_EachGrade <- LC_Data %>% group_by(grade) %>% tally()
+setnames(LoansCount_EachGrade, old = c('grade','n'), new = c('Grade','Count'))
+print(LoansCount_EachGrade)
+
+
+#Loans variation by grade.
+
+Loans_EachGrade <- LC_Data %>% group_by(grade) %>% summarise(sum(loan_amnt))
+setnames(Loans_EachGrade, old = c('grade','sum(loan_amnt)'), new = c('Grade','Sum of amounts'))
+print(Loans_EachGrade)  
+
+#Loans variation by sub-grade.
+Loans_EachSubGrade <- LC_Data %>% group_by(sub_grade) %>% summarise(sum(loan_amnt))
+setnames(Loans_EachSubGrade, old = c('sub_grade','sum(loan_amnt)'), new = c('Sub Grade','Sum of amounts'))
+print(Loans_EachSubGrade)  
+
+#Graph view- segregating Charged off vs Fully Paid
+ggplot(LC_Data, aes( x = loan_amnt)) + geom_histogram(aes(fill=grade)) + facet_wrap(~loan_status)
+
+#Calculating mean interest to compare with grade and subgrade. 
+#Comparison with Grade
+int_bygrade <- LC_Data %>% group_by(grade) %>% summarise(InterestRate = mean(int_rate))
+print(int_bygrade)
+
+#Comparison with Subgrade
+int_bysubgrade <- LC_Data %>% group_by(sub_grade) %>% summarise(InterestRateSubgrade = mean(int_rate))
+print(int_bysubgrade)
+
+#Plot for mean Interest rate with grade.
+ggplot(int_bygrade,aes(x=grade, y =InterestRate, group =1)) + geom_line() + geom_point()
+
+#Plot for mean Interest rate with sub grade.
+ggplot(int_bysubgrade,aes(x=sub_grade, y =InterestRateSubgrade, group =1)) + geom_line() + geom_point()
+
+
+```
+
+
+```{r, Question 2(a)(ii)}
+
+#Summary for Average and standard-deviation of Interest rate by grade and subgrade.
+
+characteristics_intRate_grade <- LC_Data %>% group_by(grade) %>% summarise(numLoans=n(), avgInterest = mean(int_rate), std_dev_Interest = sd(int_rate))
+print(characteristics_intRate_grade)
+
+characteristics_intRate_subgrade <- LC_Data %>% group_by(sub_grade) %>% summarise(numLoans=n(), avgInterest = mean(int_rate), std_dev_Interest = sd(int_rate))
+print(characteristics_intRate_subgrade)
+
+
+mean_int <- LC_Data %>% group_by(grade,sub_grade) %>% summarise(mean_intRate = mean(int_rate))
+print(mean_int)
+
+#Line plot for Standard dev of int rate versus grades of loans.
+ggplot(characteristics_intRate_grade,aes(x=grade, y =std_dev_Interest, group =1)) + geom_line() + geom_point() 
+
+#Line plot for Standard dev of int rate versus sub grades of loans.
+ggplot(characteristics_intRate_subgrade,aes(x=sub_grade, y =std_dev_Interest, group =1)) + geom_line() + geom_point()
+
+
+#Minimum interest rates for each grades and subgrades
+min_intRate_grade <-LC_Data %>% group_by(grade) %>% summarize(min(int_rate))
+print(min_intRate_grade)
+
+min_intRate_subgrade <-LC_Data %>% group_by(sub_grade) %>% summarize(min(int_rate))
+print(min_intRate_subgrade)
+
+
+#Maximum interest rates for each grades and subgrades
+max_intRate_grade <-LC_Data %>% group_by(grade) %>% summarize(max(int_rate))
+print(max_intRate_grade)
+
+max_intRate_subgrade <-LC_Data %>% group_by(sub_grade) %>% summarize(max(int_rate))
+print(max_intRate_subgrade)
+
+
+
+```
+
+
+```{r, Question 2(a)(iii)}
+
+#Data For loans fully paid - time-to-payoff  
+
+head(LC_Data[, c("last_pymnt_d", "issue_d")])
+
+LC_Data$last_pymnt_d<-paste(LC_Data$last_pymnt_d, "-01", sep = "")
+#     Then convert this character to a date type variable
+LC_Data$last_pymnt_d<-parse_date_time(LC_Data$last_pymnt_d,  "myd")
+
+head(LC_Data[, c("last_pymnt_d", "issue_d")])
+
+
+LC_Data$actualTerm <- ifelse(LC_Data$loan_status=="Fully Paid", as.duration(LC_Data$issue_d  %--% LC_Data$last_pymnt_d)/dyears(1), 3)
+
+
+print(LC_Data$actualTerm)
+ggplot(LC_Data, aes(x=actualTerm, y=grade)) + geom_boxplot()+coord_flip()+labs(y="Grade", x = "Average Actual Term")
+
+dim(LC_Data)
+
+```
+
+
+```{r, Question 2(a)(iv)}
+
+#Annualized percent return:
+#LC_Data$annRet <- ((LC_Data$total_pymnt
+#                    -LC_Data$funded_amnt)/LC_Data$funded_amnt)*(12/36)*100
+#print(LC_Data$annRet)
+
+#Actual Annual Return percentage
+LC_Data$actualReturn <- ifelse(LC_Data$actualTerm>0, (((LC_Data$total_pymnt-LC_Data$funded_amnt)/LC_Data$funded_amnt)/LC_Data$actualTerm)*100,0)
+
+
+AnnualRetrun <- ((LC_Data$total_pymnt -LC_Data$funded_amnt)/LC_Data$funded_amnt)*(12/36)*100
+
+#Return from charged off loans vary by loan grades
+
+LC_Data$return = LC_Data$total_pymnt-LC_Data$funded_amnt
+LC_Data$returnperyear = (LC_Data$return/LC_Data$funded_amnt)/3*100
+
+#Table for return per year  - grade and loan status. 
+return_defaults<-LC_Data%>%group_by(grade,loan_status)%>%summarise(return_peryear=mean(returnperyear))
+print(return_defaults)
+
+#Table for returns per year from default loans  - grade.
+retdef=filter(LC_Data, loan_status=="Charged Off")
+returns_defaults<-retdef%>%group_by(grade)%>%summarise(mean_returnperyear=mean(returnperyear),sd_returnper=sd(returnperyear),min_returnperyear=min(returnperyear),max_returnperyear=max(returnperyear)) 
+print(returns_defaults)
+
+ret_loan_status<-LC_Data%>%group_by(loan_status)%>%summarise(mean_returnperyear=mean(returnperyear),sd_returnperyear=sd(returnperyear),min_returnperyear=min(returnperyear),
+                                                   max_returnper=max(returnperyear)) 
+
+ggplot(data=ret_loan_status, aes(x=loan_status, y=mean_returnperyear, group=1)) +
+  geom_line()+
+  geom_point()+labs(y="Average Annual Return", x = "Loan Status")
+
+returns_grade<-LC_Data%>%group_by(grade)%>%summarise(mean_returnperyear=mean(returnperyear),sd_returnperyear=sd(returnperyear),min_returnperyear=min(returnperyear),max_returnperyear=max(returnperyear)) 
+print(returns_grade)
+
+#Line plot for return from loans versus grades. 
+ggplot(returns_grade, aes(x=grade, y=mean_returnperyear,group =1)) + geom_line()+geom_point() +labs(y="Mean return from loans", x = "Grade")
+
+#Return from loans vary by loan sub grades
+return_subgrade<-LC_Data%>%group_by(sub_grade)%>%summarise(mean_returnperyear=mean(returnperyear),sd_returnperyear=sd(returnperyear),min_returnperyear=min(returnperyear),max_returnperyear=max(returnperyear)) 
+print(return_subgrade)
+
+
+#Line plot for return from loans versus sub grades. 
+ggplot(return_subgrade, aes(x=sub_grade, y=mean_returnperyear,group =1)) + geom_line()+geom_point() +labs(y="Mean return from loans", x = "Sub Grade")
+
+
+#Average returns versus Average interest rate:
+
+returns_intRate_grade<-LC_Data%>%group_by(grade)%>%summarise(mean_returnperyear=mean(returnperyear),avgIntrate=mean(int_rate))
+print(returns_intRate_grade)
+
+returns_intRate_subgrade<-LC_Data%>%group_by(sub_grade)%>%summarise(mean_returnperyear=mean(returnperyear),avgIntrate=mean(int_rate))
+print(returns_intRate_subgrade)
+
+dim(LC_Data)
+
+```
+
+
+```{r, Question 2(a)(v)}
+
+#Loans granted versus purpose.
+purpose_loan<-LC_Data%>%group_by(purpose)%>%summarise(n=n(),mean_loan=mean(loan_amnt))%>%mutate(freq=n/sum(n)*100)
+setnames(purpose_loan, old = c('purpose','n'), new = c('Purpose','totalCount'))
+print(purpose_loan)
+
+#Loan status versus purpose.
+purpose_loan_status<-LC_Data%>%group_by(purpose,loan_status)%>%summarise(n=n(),mean_loan=mean(loan_amnt))%>%mutate(freq=n/sum(n)*100)
+print(purpose_loan_status)
+
+ggplot(data=purpose_loan_status, aes(x=purpose, y=mean_loan, group=1)) +
+  geom_line(linetype = "dashed")+
+  geom_point()+labs(y="Average Loan Amount", x = "Purpose")
+
+
+#Loan grade versus purpose.
+purpose_loan_grade<-LC_Data%>%group_by(purpose,grade)%>%summarise(n=n(),mean_loan=mean(loan_amnt))%>%mutate(freq=n/sum(n)*100)
+print(purpose_loan_grade)
+
+```
+
+
+```{r, Question 2(a)(vi)}
+#Employment period versus Mean Loan amount:
+emply_loanamt<-LC_Data%>%group_by(emp_length)%>%summarise(n=n(),mean_loan=mean(loan_amnt))
+print(emply_loanamt)
+ggplot(data=emply_loanamt, aes(x=emp_length, y=mean_loan, group=1)) +
+  geom_line()+geom_point() + labs(y="Mean Loan amount", x = "Employment Length")
+
+
+#Employment length versus grade:
+emply_grade<-LC_Data%>%group_by(emp_length,grade)%>%summarise(n=n(),mean_loan=mean(loan_amnt))
+print(emply_grade)
+
+#Employment length versus purpose
+emply_purpose<-LC_Data%>%group_by(emp_length,purpose)%>%summarise(n=n(),mean_loan=mean(loan_amnt))
+print(emply_purpose)
+
+#Annual income versus purpose
+annInc_pur<-LC_Data%>%group_by(purpose)%>%summarise(n=n(),mean_anninc=mean(annual_inc))
+print(annInc_pur)
+
+#Annual income versus Grade:
+annInc_grade<-LC_Data%>%group_by(grade)%>%summarise(n=n(),mean_anninc=mean(annual_inc))
+print(annInc_grade)
+ggplot(data=annInc_grade, aes(x=grade, y=mean_anninc, group=1)) +
+  geom_line()+geom_point() + labs(y="Mean Annual Income", x = "Grade")
+
+dim(LC_Data)
+
+```
+
+
+```{r, Question 2(a)(vii)}
+
+#Generate some (at least 3) new derived attributes which you think may be useful for predicting default., and explain what these are. For these, do an analyses as in the questions above (as reasonable based on the derived variables).
+
+#Derived attribute-1: proportion of satisfactory bankcard accounts 
+
+LC_Data$satisBankcardAccts_prop <- ifelse(LC_Data$num_bc_tl>0, LC_Data$num_bc_sats/LC_Data$num_bc_tl, 0)
+print(LC_Data$satisBankcardAccts_prop)
+
+#Derived Attribute-2: length of borrower's history with LC
+
+LC_Data$earliest_cr_line<-paste(LC_Data$earliest_cr_line, "-01", sep = "")
+LC_Data$earliest_cr_line<-parse_date_time(LC_Data$earliest_cr_line, "myd")
+LC_Data$borrHistory <- as.duration(LC_Data$earliest_cr_line %--% LC_Data$issue_d) /dyears(1)
+print(LC_Data$borrHistory)
+
+
+
+#Derived attribute-3: ratio of open Accounts to total Accounts
+LC_Data$openAccRatio <- ifelse(LC_Data$total_acc>0, LC_Data$open_acc/LC_Data$total_acc, 0)
+print(LC_Data$openAccRatio)
+
+#Summary with line plot for openAccRatio with Grade
+openAcc_Grade <- LC_Data %>% group_by(grade) %>% summarise(openAcc_Ratio=mean(openAccRatio))
+print(openAcc_Grade)
+ggplot(openAcc_Grade, aes(x=grade, y=openAcc_Ratio,group=1)) + geom_line() + geom_point()
+
+
+#Summary with line plot for openAccRatio with loan status.
+openAcc_loanstat<-LC_Data %>% group_by(loan_status) %>% summarise(avgOpenAccRatio=mean(openAccRatio))
+print(openAcc_loanstat)
+ggplot(openAcc_loanstat, aes(x=loan_status, y=avgOpenAccRatio,group=1)) + geom_line() + geom_point()
+
+#Derived attribute-4: Balance amount to pay
+
+LC_Data$balance_to_pay <- LC_Data$funded_amnt - LC_Data$total_pymnt
+print(LC_Data$balance_to_pay)
+
+bal_to_paygrade<-LC_Data%>%group_by(grade)%>%summarise(balLeft=sum(balance_to_pay))
+print(bal_to_paygrade)
+
+
+bal_to_paysubgrade<-LC_Data%>%group_by(sub_grade)%>%summarise(balLeft=sum(balance_to_pay))
+print(bal_to_paysubgrade)
+
+#Line plot for Balance left by grades.
+ggplot(bal_to_paygrade, aes(x=grade, y=balLeft,group=1)) + geom_line() + geom_point()
+
+#Line plot for Balance left by subgrades.
+ggplot(bal_to_paysubgrade, aes(x=sub_grade, y=balLeft,group=1)) + geom_line() + geom_point()
+
+
+# negative values indicate most of the loans are paid off and with some interest rate. Thta's why total payment exceeds the funded amount
+#for positive values the loan is charged off
+
+
+#LC assigned Grade variation by borrow History
+loan_v_borrow <- LC_Data %>% group_by(grade) %>% summarise(avgBorrHist=mean(borrHistory))
+loan_v_borrow
+
+#plot to understand variation between borrow history and grade
+ggplot(loan_v_borrow, aes(x=grade, y=avgBorrHist,group=1)) + geom_line() + geom_point()
+
+#Summary with line plot for mean borrHistory with Loan status.
+
+
+borrHis_grade<-LC_Data %>% group_by(loan_status) %>% summarise(avgBorrHist=mean(borrHistory))
+print(borrHis_grade)
+ggplot(borrHis_grade, aes(x=loan_status, y=avgBorrHist,group=1)) + geom_line() + geom_point()
+
+
+
+
+LC_Data %>% group_by(grade) %>%summarise(avgSatisBankCard_prop=mean(satisBankcardAccts_prop))
+
+dim(LC_Data)
+
+```
+
+
+```{r,question-2-c}
+
+#(c) Are there missing values? What is the proportion of missing values in different variables?
+
+dim(LC_Data)
+
+#Drop col's with all empty values into new data frame -lcdf
+lcdf <- LC_Data %>% select_if(function(x){!all(is.na(x))})
+
+dim(lcdf)
+
+#columns where there are missing values
+colMeans(is.na(lcdf))[colMeans(is.na(lcdf))>0]
+
+lcdf <- lcdf %>% select(-names(lcdf)[colMeans(is.na(lcdf))>0.6])
+dim(lcdf)
+
+
+#Check where the missing values are present
+names(colMeans(is.na(lcdf))[colMeans(is.na(lcdf))>0])
+
+#variable imputation
+
+lcdf<- lcdf %>% replace_na(list(bc_open_to_buy=median(lcdf$bc_open_to_buy, na.rm=TRUE), num_tl_120dpd_2m = median(lcdf$num_tl_120dpd_2m, na.rm=TRUE),percent_bc_gt_75 = median(lcdf$percent_bc_gt_75, na.rm=TRUE), bc_util=median(lcdf$bc_util, na.rm=TRUE) ))
+
+
+names(colMeans(is.na(lcdf))[colMeans(is.na(lcdf))>0])
+
+dim(lcdf)
+
+```
+
+
+```{r , question3}
+
+#3. Consider the potential for data leakage. You do not want to include variables in your model which may not be available when applying the model; that is, some data may not be available for new loans before they are funded. Leakage may also arise from variables in the data which may have been updated during the loan period (ie., after the loan is funded). Identify and explain which variables will you exclude from the model.
+
+# new data after considering for leakage
+new_data <- lcdf %>% select(-c(funded_amnt_inv, term, emp_title, pymnt_plan, title, zip_code, addr_state, out_prncp, out_prncp_inv, total_pymnt_inv, total_rec_prncp, total_rec_int,total_rec_late_fee,recoveries, collection_recovery_fee, last_credit_pull_d, policy_code, disbursement_method, debt_settlement_flag, hardship_flag, application_type))
+
+#removing additional variables which are not present in the 
+new_data <- new_data %>% select(-c(last_pymnt_d, last_pymnt_amnt))
+
+dim(new_data)
+
+
+names(colMeans(is.na(new_data))[colMeans(is.na(new_data))>0])
+
+new_data <- new_data %>% select(-c(return,returnperyear))
+```
+
+
+```{r ,question4}
+
+#Do a univariate analyses to determine which variables (from amongst those you decide to consider for the next stage prediction task) will be #individually useful for predicting the dependent variable (loan_status). For this, you need a measure of relationship between the dependent #variable and each of the potential predictor variables. Given loan-status as a binary dependent variable, which measure will you use? From your #analyses using this measure, which variables do you think will be useful for predicting loan_status? (Note – if certain variables on their own #are highly predictive of the outcome, it is good to ask if this variable has a leakage issue).
+
+
+library(pROC) #importing the package which has AUC(..) function
+
+#Using sapply function to apply AUC curve on the variables
+#considered both numeric and factor variables.
+# we need numeric variables to calculate the area under the curve
+
+head(new_data$earliest_cr_line)
+
+new_data$earliest_cr_line <- as.Date(new_data$earliest_cr_line)
+new_data$issue_d <- as.Date(new_data$issue_d)
+new_data <- mutate_if(new_data, is.character, as.factor)
+
+
+#dropping the loan status variable
+ds_train <- new_data %>% select(-c(loan_status))
+
+aucAll<- sapply(ds_train %>% mutate_if(is.factor, as.numeric) %>% select_if(is.numeric), auc, response = new_data$loan_status)
+
+#To determine which variables have AUC > 0.5
+length(aucAll[aucAll>0.5])
+
+selected_col<-names(aucAll[aucAll>0.5])
+
+selected_col <- append(selected_col,"loan_status")
+
+# adding the loan status variable
+new_data <- new_data %>% select((selected_col))
+
+
+library(broom)
+
+#view a table output 
+tidy(aucAll[aucAll > 0.5]) %>% view()
+
+#arranging auc curve values in descending order 
+tidy(aucAll) %>% arrange(desc(aucAll))
+
+```
+
+
+```{r , question 5a}
+new_dt=new_data
+
+glimpse(new_data)
+
+##pre-preprocessing data steps
+
+#removing variables like actualTerm, actualRetrun
+
+# excluding certain elements from the dataset because of data leakage issue. 
+new_data2=new_data
+new_data1 <- new_data%>%select(-c(actualReturn,total_pymnt, balance_to_pay))
+
+new_data1 <- new_data1%>%select(-c(grade))
+
+new_data1 <- new_data1%>%select(-c(actualTerm,funded_amnt))
+
+names(colMeans(is.na(new_data1)))[colMeans(is.na(new_data1))>0]
+
+
+
+#replacing some of the missing NA values in the columns by median values
+
+new_data1<- new_data1 %>% replace_na(list(mths_since_last_delinq=median(new_data1$mths_since_last_delinq, na.rm=TRUE),
+                                     revol_util = median(new_data1$revol_util, na.rm=TRUE),
+                                     avg_cur_bal = median(new_data1$avg_cur_bal, na.rm=TRUE),
+                                     mths_since_recent_bc = median(new_data1$mths_since_recent_bc, na.rm=TRUE),
+                                     mths_since_recent_inq = median(new_data1$mths_since_recent_inq, na.rm=TRUE),
+                                     num_rev_accts = median(new_data1$num_rev_accts, na.rm=TRUE),
+                                     pct_tl_nvr_dlq = median(new_data1$pct_tl_nvr_dlq, na.rm=TRUE),
+                                     mo_sin_old_il_acct=median(new_data1$mo_sin_old_il_acct, na.rm=TRUE) ))
+
+names(colMeans(is.na(new_data1)))[colMeans(is.na(new_data1))>0]
+
+new_data1$loan_status <- factor(new_data1$loan_status)#, levels=c("Fully Paid", "Charged Off"))
+
+dim(new_data1)
+
+library(rpart)
+library(rpart.plot)
+library(ranger)
+
+
+#Splitting data into 70% training and 30%  testing ratio. 
+
+PROP = 0.7  #proportion of examples in the training sample
+nr<-nrow(new_data1)
+trnIndex<- sample(1:nr, size = round(PROP * nr), replace=FALSE)
+
+final_dataTrn <- new_data1[trnIndex, ]
+final_dataTst <- new_data1[-trnIndex, ]
+
+names(new_data1)
+
+
+```
+
+
+```{r, question 5b}
+
+set.seed(273)
+
+lcDT1 <- rpart(loan_status ~., data=final_dataTrn, method="class", parms = list(split = "information"), control = rpart.control(cp=-1))
+printcp(lcDT1)
+
+plotcp(lcDT1)
+
+library(ROCR)
+library(caret)
+
+#model 1
+lcDT1_1 <- rpart(loan_status ~., data=final_dataTrn, method="class", parms = list(split = "information"), control = rpart.control(cp=0.00019279))
+
+
+#ROC plot
+score=predict(lcDT1_1,final_dataTst, type="prob")[,"Charged Off"]
+pred=prediction(score, final_dataTst$loan_status, label.ordering = c("Fully Paid", "Charged Off"))
+    #label.ordering here specifies the 'negative', 'positive' class labels   
+
+#ROC curve
+aucPerf <-performance(pred, "tpr", "fpr")
+plot(aucPerf)
+abline(a=0, b= 1)
+
+#AUC value
+aucPerf=performance(pred, "auc")
+aucPerf@y.values
+
+
+#Lift curve
+liftPerf <-performance(pred, "lift", "rpp")
+plot(liftPerf)
+
+test_preds = predict(lcDT1_1,final_dataTst, type="prob")
+thrsh = 0.5
+test_preds <- ifelse(test_preds[,1] > thrsh, "Charged Off", "Fully Paid")
+confusionMatrix(factor(test_preds,levels=c('Charged Off','Fully Paid')),final_dataTst$loan_status,positive = "Charged Off")
+
+
+##model 2
+
+lcDT1_2 <- rpart(loan_status ~., data=final_dataTrn, method="class", parms = list(split = "information"), control = rpart.control(cp= 0.00017302))
+
+
+#ROC plot
+score=predict(lcDT1_2,final_dataTst, type="prob")[,"Charged Off"]
+pred=prediction(score, final_dataTst$loan_status, label.ordering = c("Fully Paid", "Charged Off"))
+    #label.ordering here specifies the 'negative', 'positive' class labels   
+
+#ROC curve
+aucPerf <-performance(pred, "tpr", "fpr")
+plot(aucPerf)
+abline(a=0, b= 1)
+
+#AUC value
+aucPerf=performance(pred, "auc")
+aucPerf@y.values
+
+
+#Lift curve
+liftPerf <-performance(pred, "lift", "rpp")
+plot(liftPerf)
+
+test_preds = predict(lcDT1_2,final_dataTst, type="prob")
+thrsh = 0.5
+test_preds <- ifelse(test_preds[,1] > thrsh, "Charged Off", "Fully Paid")
+confusionMatrix(factor(test_preds,levels=c('Charged Off','Fully Paid')),final_dataTst$loan_status,positive = "Charged Off")
+
+
+##model 3
+
+lcDT1_3 <- rpart(loan_status ~., data=final_dataTrn, method="class", parms = list(split = "information"), control = rpart.control(cp= 0.000057672))
+
+
+#ROC plot
+score=predict(lcDT1_3,final_dataTst, type="prob")[,"Charged Off"]
+pred=prediction(score, final_dataTst$loan_status, label.ordering = c("Fully Paid", "Charged Off"))
+    #label.ordering here specifies the 'negative', 'positive' class labels   
+
+#ROC curve
+aucPerf <-performance(pred, "tpr", "fpr")
+plot(aucPerf)
+abline(a=0, b= 1)
+
+#AUC value
+aucPerf=performance(pred, "auc")
+aucPerf@y.values
+
+
+#Lift curve
+liftPerf <-performance(pred, "lift", "rpp")
+plot(liftPerf)
+
+test_preds = predict(lcDT1_3,final_dataTst, type="prob")
+thrsh = 0.5
+test_preds <- ifelse(test_preds[,1] > thrsh, "Charged Off", "Fully Paid")
+confusionMatrix(factor(test_preds,levels=c('Charged Off','Fully Paid')),final_dataTst$loan_status,positive = "Charged Off")
+
+```
+
+
+```{r, balancing the dataset and perfoming DT}
+
+set.seed(273)
+
+library(ROSE)
+
+balanced_train <- ovun.sample(loan_status ~ ., data = final_dataTrn, method = "over",N = 120000)$data
+round(100*prop.table(table(balanced_train$loan_status)),digits=2)
+
+#Now that we have over sampled the charged off data. We can use the above balanced train set to train our model and test our specivity and accuracy again.
+
+dt_model <- rpart(loan_status ~., data=balanced_train, method="class", parms = list(split = "information"), control = rpart.control(cp=-1))
+
+plotcp(dt_model)
+printcp(dt_model)
+
+#Decision Tree
+dt_model <- rpart(loan_status ~., data=balanced_train, method="class", parms = list(split = "infomration"), control = rpart.control(minsplit = 50,minbucket = 35, cp=0.0000083846))
+
+printcp(dt_model)
+plotcp(dt_model)
+
+#Classification method
+test_preds<-predict(dt_model,final_dataTst, type='class')
+confusionMatrix(factor(test_preds,levels=c('Charged Off','Fully Paid')),final_dataTst$loan_status,positive = "Charged Off")
+
+
+#Probability Method
+test_preds<-predict(dt_model,final_dataTst, type='prob')[,'Charged Off']
+pred=prediction(test_preds, final_dataTst$loan_status, label.ordering = c("Fully Paid", "Charged Off"))  #label.ordering = (negative class, positive class)
+
+
+#ROC curve
+roc_curve <-performance(pred, "tpr", "fpr")
+plot(roc_curve)
+abline(a=0, b= 1)
+roc_curve_rpart_dt <- roc_curve
+
+#AUC value
+auc_score<-performance(pred, "auc")
+auc_score@y.values
+
+
+#Lift curve
+liftPerf <-performance(pred, "lift", "rpp")
+plot(liftPerf)
+
+
+## performing tests on training data
+
+#Classification method
+test_preds<-predict(dt_model,balanced_train, type='class')
+confusionMatrix(factor(test_preds,levels=c('Charged Off','Fully Paid')),balanced_train$loan_status,positive = "Charged Off")
+
+
+#Probability Method
+test_preds<-predict(dt_model,balanced_train, type='prob')[,'Charged Off']
+pred=prediction(test_preds, balanced_train$loan_status, label.ordering = c("Fully Paid", "Charged Off"))  #label.ordering = (negative class, positive class)
+
+
+#ROC curve
+roc_curve <-performance(pred, "tpr", "fpr")
+plot(roc_curve)
+abline(a=0, b= 1)
+
+#AUC value
+auc_score<-performance(pred, "auc")
+auc_score@y.values
+
+
+#Lift curve
+liftPerf <-performance(pred, "lift", "rpp")
+plot(liftPerf)
+
+```
+
+
+```{r, c50 model}
+
+library(C50)
+
+set.seed(273)
+
+#C50
+C50_model<-C5.0.default(x = balanced_train %>% select(-loan_status), y = balanced_train$loan_status, control = C5.0Control(minCases = 50, CF=0.6))
+
+#On test data
+test_preds<-predict(C50_model,final_dataTst %>% select(-loan_status))
+
+confusionMatrix(factor(test_preds,levels=c('Charged Off','Fully Paid')),final_dataTst$loan_status,positive = "Charged Off")
+
+test_preds<-predict(C50_model,final_dataTst, type='prob')[,'Charged Off']
+pred=prediction(test_preds, final_dataTst$loan_status, label.ordering = c("Fully Paid", "Charged Off"))
+
+#ROC curve
+roc_curve <-performance(pred, "tpr", "fpr")
+plot(roc_curve)
+abline(a=0, b= 1)
+roc_curve_c50 <- roc_curve
+
+#AUC value
+auc_score<-performance(pred, "auc")
+auc_score@y.values
+#Lift curve
+liftPerf <-performance(pred, "lift", "rpp")
+plot(liftPerf)
+
+
+
+#On Training
+train_preds<-predict(C50_model,balanced_train %>% select(-loan_status))
+
+confusionMatrix(factor(train_preds,levels=c('Charged Off','Fully Paid')),balanced_train$loan_status,positive = "Charged Off")
+
+train_preds_<-predict(C50_model,balanced_train, type='prob')[,'Charged Off']
+pred=prediction(train_preds_, balanced_train$loan_status, label.ordering = c("Fully Paid", "Charged Off"))  #label.ordering = (negative class, positive class)
+
+#ROC curve
+roc_curve <-performance(pred, "tpr", "fpr")
+plot(roc_curve)
+abline(a=0, b= 1)
+
+#AUC value
+auc_score<-performance(pred, "auc")
+auc_score@y.values
+#Lift curve
+liftPerf <-performance(pred, "lift", "rpp")
+plot(liftPerf)
+
+C5imp(C50_model)
+
+```
+
+
+```{r ,question6}
+
+# excluding certain elements from the dataset because of data leakage issue. 
+
+new_data1 <- new_dt%>%select(-c(actualReturn,actualTerm,total_pymnt, balance_to_pay))
+
+names(colMeans(is.na(new_data1)))[colMeans(is.na(new_data1))>0]
+
+
+cc<-table( new_data1$loan_status, replace_na( new_data1$mths_since_recent_inq , "missing") )
+cc[1,]/(cc[2,]+cc[1,])
+
+#replacing some of the missing NA values in the columns by median values
+
+new_data1<- new_data1 %>% replace_na(list(mths_since_last_delinq=median(new_data1$mths_since_last_delinq, na.rm=TRUE),
+                                     revol_util = median(new_data1$revol_util, na.rm=TRUE),
+                                     avg_cur_bal = median(new_data1$avg_cur_bal, na.rm=TRUE),
+                                     mths_since_recent_bc = median(new_data1$mths_since_recent_bc, na.rm=TRUE),
+                                     mths_since_recent_inq = median(new_data1$mths_since_recent_inq, na.rm=TRUE),
+                                     num_rev_accts = median(new_data1$num_rev_accts, na.rm=TRUE),
+                                     pct_tl_nvr_dlq = median(new_data1$pct_tl_nvr_dlq, na.rm=TRUE),
+                                     mo_sin_old_il_acct=median(new_data1$mo_sin_old_il_acct, na.rm=TRUE) ))
+
+names(colMeans(is.na(new_data1)))[colMeans(is.na(new_data1))>0]
+
+
+library(ranger)
+
+#Splitting data into 70% training and 30%  testing ratio. 
+
+TRNPROP = 0.7  #proportion of examples in the training sample
+nr<-nrow(new_data1)
+trnIndex<- sample(1:nr, size = round(TRNPROP * nr), replace=FALSE)
+
+new_data1Trn <- new_data1[trnIndex, ]
+new_data1Tst <- new_data1[-trnIndex, ]
+
+#ran a  random forest based using ranger, splitrule is gini
+new_data1T1<- ranger(loan_status ~., data=new_data1Trn, classification = TRUE,
+                     num.trees =200, importance='permutation', probability = TRUE)
+
+sort(new_data1T1$variable.importance, decreasing = TRUE)
+#Making predictions and evaluating performance of the model
+#training data 
+#predicting values in training data
+
+predTrn<-predict(new_data1T1,new_data1Trn, type='response') # type response as a classification 
+
+# we get the predictions of charged off and fully paid loans in the form of probabilities. 
+#Next we compare if probability of charged off is greated than fully charged(thatis 50% threshold value) then loan is 
+#charged off else fully paid
+
+predictions<- ifelse (predTrn$predictions[,"Charged Off"]>predTrn$predictions[,"Fully Paid"],"Charged Off","Fully Paid")
+#Performance Evaluation
+#creating a confusion matrix
+
+CM<-table(pred = predictions, true=new_data1Trn$loan_status)
+CM
+mean(predictions == new_data1Trn$loan_status)
+#accuracy is around 98.8%
+
+# Calculating F1score
+
+precision <- CM[1,1]/(CM[1,1]+CM[1,2])
+recall <- CM[1,1]/(CM[1,1]+CM[2,1])
+F1 <- (2 * precision * recall) / (precision + recall)
+F1
+#testing
+
+predTst=predict(new_data1T1,new_data1Tst, type='response') # type response as a classification 
+
+#when threshold of charged off >50%
+predictions<- ifelse (predTst$predictions[,"Charged Off"]>predTst$predictions[,"Fully Paid"],"Charged Off","Fully Paid")
+CM<-table(pred = predictions, true=new_data1Tst$loan_status)
+CM
+mean(predictions == new_data1Tst$loan_status)
+precision <- CM[1,1]/(CM[1,1]+CM[1,2])
+recall <- CM[1,1]/(CM[1,1]+CM[2,1])
+F1 <- (2 * precision * recall) / (precision + recall)
+F1
+#accuracy for test data is around 93.3%
+
+#altering number of trees in random forest for better precision using a loop
+trees.no<- c(1,2,3,4,5,10,15,20,30,40,50,60)
+pred<-c()
+F1score<-c()
+for (i in trees.no)
+  {
+  trial1<- ranger(loan_status ~., data=new_data1Trn, classification = TRUE,
+                     num.trees =i, importance='permutation', probability = TRUE)
+  predTst=predict(trial1,new_data1Tst, type='response') # type response as a classification 
+  predictions<- ifelse (predTst$predictions[,"Charged Off"]>predTst$predictions[,"Fully Paid"],"Charged Off","Fully  Paid")  
+  CM<-table(pred = predictions, true=new_data1Tst$loan_status)
+  precision <- CM[1,1]/(CM[1,1]+CM[1,2])
+  recall <- CM[1,1]/(CM[1,1]+CM[2,1])
+  F1 <- (2 * precision * recall) / (precision + recall)
+  pred<-append(pred,(CM[1,1]+CM[2,2])/length(predictions))
+  F1score<- append(F1score,F1)
+}
+
+
+plot(trees.no, pred, main="Number of Trees vs Pred",
+   xlab="Number of Trees ", ylab="Correct Predictions%", pch=19)
+plot(trees.no, F1score, main="Number of Trees vs F1score",
+   xlab="Number of Trees ", ylab="F1score", pch=19)
+
+#we observe that the model has highest accuracy and F1 score when number of trees is 10
+
+new_data1T1<- ranger(loan_status ~., data=new_data1Trn, classification = TRUE,
+                     num.trees =10, importance='permutation', probability = TRUE)
+#testing
+#Checking for different threshold values
+predTst=predict(new_data1T1,new_data1Tst, type='response') # type response as a classification 
+perc<-c(0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8) #array of threshold values
+pred1<-c()
+F1score1<-c()
+for (i in perc){ 
+predictions<- ifelse (predTst$predictions[,"Charged Off"]>i,"Charged Off","Fully Paid")
+CM<-table(pred = predictions, true=new_data1Tst$loan_status)
+precision <- CM[1,1]/(CM[1,1]+CM[1,2])
+recall <- CM[1,1]/(CM[1,1]+CM[2,1])
+F1 <- (2 * precision * recall) / (precision + recall)
+  pred1<-append(pred1,(CM[1,1]+CM[2,2])/length(predictions))
+  F1score1<- append(F1score1,F1)
+
+}
+plot(perc, pred1, main="Threshold value vs Prediction",
+   xlab="Threshold value ", ylab="Correct Predictions%", pch=19)
+plot(perc, F1score1, main="Threshold value vs F1score",
+   xlab="Threshold value ", ylab="F1score", pch=19)
+# we observe that at threshold value=0.4 we get the maximum accuracy and F1 score
+
+
+test_preds_ <- predTst$predictions[,'Charged Off']
+pred=prediction(test_preds_, new_data1Tst$loan_status, label.ordering = c("Fully Paid", "Charged Off"))  #label.ordering = (negative class, positive class)
+
+#ROC curve
+roc_curve_rf <-performance(pred, "tpr", "fpr")
+plot(roc_curve_rf)
+abline(a=0, b= 1)
+
+
+#AUC value
+auc_score<-performance(pred, "auc")
+auc_score@y.values
+#Lift curve
+liftPerf_rf <-performance(pred, "lift", "rpp")
+plot(liftPerf_rf)
+
+
+```
+
+
+########## Assignment-2 Start
+
+
+```{r, assignment_q1}
+
+set.seed(273)
+
+library(caret)
+library(xgboost)
+
+#One-hot encoding
+dummy_vars_<-dummyVars(~.,data=new_data1%>% select(-loan_status))
+dummied_ds<-predict(dummy_vars_, new_data1)
+
+dylcdf<-class2ind(new_data1$loan_status, drop2nd = FALSE)
+co_class<-dylcdf[ , 1] # Selected Charged Off as positive class - 0: Fully Paid, 1: Charged Off
+
+#Splitting into Train and Test  
+dxlcdfTrn<-dummied_ds[trnIndex,]
+colcdfTrn<-co_class[trnIndex]
+dxlcdfTst<-dummied_ds[-trnIndex,]
+colcdfTst<-co_class[-trnIndex]
+
+dxTrn<-xgb.DMatrix( subset(dxlcdfTrn), label=colcdfTrn)
+dxTst<-xgb.DMatrix( subset( dxlcdfTst), label=colcdfTst)
+
+xgb_watchlist<-list(train = dxTrn, eval= dxTst)
+
+#Initial xgboost model
+xgbParam<-list (
+max_depth= 5, eta = 0.1,
+objective = "binary:logistic",
+eval_metric="error", eval_metric= "auc")
+
+xgb_untuned <-xgb.train( xgbParam, dxTrn, nrounds= 500, xgb_watchlist, early_stopping_rounds= 10,scale_pos_weight = 9 )
+xgb_untuned$best_iteration
+
+# set up the hyper-parameter search
+xgb_grid = expand.grid(eta = c(0.01, 0.001, 0.0001),
+                       max_depth = c(2, 5))
+
+for(i in 1:nrow(xgb_grid)) {
+  xgb_tune<-xgboost(data=dxTrn,booster='gbtree',objective = "binary:logistic",nrounds=1000, eta=xgb_grid$eta[i],xgb_watchlist, max_depth=xgb_grid$max_depth[i], early_stopping_rounds = 10,scale_pos_weight = 9,col_sample_bytree=0.6,min_child_weight=1,eval_metric = "error",eval_metric='auc')
+  xgb_grid$bestTree[i] <-xgb_tune$evaluation_log[xgb_tune$best_iteration]$iter
+  xgb_grid$bestPerf[i] <-xgb_tune$evaluation_log[xgb_tune$best_iteration]$train_auc
+}
+  
+xgb_grid <- xgb_grid[order(xgb_grid$bestPerf),]
+xgb_grid
+
+#Best Parameters are: eta: 0.01, max_depth=5, col_sample_bytree = 0.6, min_child_weight =1
+
+xgbParam<-list (
+max_depth= 5, eta = 0.01,
+booster='gbtree',
+objective = "binary:logistic",
+col_sample_bytree=0.6,
+scale_pos_weight = 9,
+min_child_weight=1,
+eval_metric="error", eval_metric= "auc")
+
+#Use best parameters and perform cross-validation
+
+xgb_cv<-xgb.cv( xgbParam, dxTrn, nrounds= 1000,xgb_watchlist, nfold=5, early_stopping_rounds= 10 )
+
+#best iteration
+xgb_cv$best_iteration
+best_cvIter<-which.max(xgb_cv$evaluation_log$test_auc_mean)
+
+xgb_best<-xgb.train( xgbParam, dxTrn,nrounds= best_cvIter)
+#variable importance
+xgb.importance(model = xgb_best) %>% view()
+
+#Predicting on validation dataset
+xgb_test_preds <- predict(xgb_best,dxTst)
+table(preds=as.numeric(xgb_test_preds>0.5), actual=colcdfTst)
+confusionMatrix(as.factor(as.numeric(xgb_test_preds>0.5)), as.factor(colcdfTst),positive = '1')  # 1: Charged Off
+
+library(ROCR)
+
+#Evaluation - CM, ROC, AUC, Cost-Based Perf
+pred=prediction(xgb_test_preds, final_dataTst$loan_status, label.ordering = c("Fully Paid", "Charged Off"))  #label.ordering = (negative class, positive class)
+
+#ROC curve
+roc_curve <-performance(pred, "tpr", "fpr")
+plot(roc_curve)
+abline(a=0, b= 1)
+roc_curve_xgboost <- roc_curve
+
+#AUC value
+auc_score<-performance(pred, "auc")
+auc_score@y.values
+#Lift curve
+liftPerf <-performance(pred, "lift", "rpp")
+plot(liftPerf)
+
+
+profit_val <- 24
+loss_val <- -35
+
+test_preds_prob_dt <- data.frame(preds = xgb_test_preds)
+test_preds_prob_dt <- cbind(test_preds_prob_dt, status=colcdfTst)
+test_preds_prob_dt <- test_preds_prob_dt[order(-test_preds_prob_dt$preds),] 
+test_preds_prob_dt$profit <- ifelse(test_preds_prob_dt$status == 0, profit_val, loss_val)
+test_preds_prob_dt$cumm_profit <- cumsum(test_preds_prob_dt$profit)
+rownames(test_preds_prob_dt) <- 1:nrow(test_preds_prob_dt)
+
+profit_cut_off = 0.5
+test_preds_prob_dt_cutoff <- test_preds_prob_dt[which(test_preds_prob_dt$preds>profit_cut_off),]
+dim(test_preds_prob_dt_cutoff)
+cumm_profit_max <- max(test_preds_prob_dt_cutoff$cumm_profit)
+rownames(test_preds_prob_dt_cutoff) <- 1:nrow(test_preds_prob_dt_cutoff)
+row_num <- rownames(test_preds_prob_dt_cutoff[which.max(test_preds_prob_dt_cutoff$cumm_profit),])
+
+plot(x=rownames(test_preds_prob_dt),y=test_preds_prob_dt$cumm_profit,type='l', xlab= 'Index', ylab= 'Cumulative Profit',main=sprintf('xgboost: At %s Cut Off, cumm_profit = %s ',profit_cut_off,cumm_profit_max))
+abline(h=cumm_profit_max,lty=2)
+
+
+# combined plot for all the 4 models
+
+plot(roc_curve_rpart_dt, col = 'black')
+plot(roc_curve_c50, add = TRUE, col = 'red')
+plot(roc_curve_rf, add = TRUE, col = 'blue')
+plot(roc_curve_xgboost, add = TRUE, col = 'cyan')
+legend(x =0.0,y=1,legend=c('Decision Tree - rpart', 'Decision Tree - C50','Random Forest','Xgboost'), col=c('black','red','blue','cyan'),lty=1)
+
+
+```
+
+
+```{r, question_2}
+  set.seed(273)
+#Ques 2 a
+final_Glm_Trn=final_dataTrn
+Final_Glm_Tst=final_dataTst
+library(ROSE)
+set.seed(273)
+#balancing the training dataset
+dim(final_Glm_Trn)
+dim(Final_Glm_Tst)
+round(100*prop.table(table(final_Glm_Trn$loan_status)),digits=2)
+# balanced data to be used later for better performance
+balDataGLM<-ovun.sample(loan_status ~ ., data = final_Glm_Trn, method = "over",N = 120000)$data
+round(100*prop.table(table(balDataGLM$loan_status)),digits=2)
+
+#Applying GLM Model
+library(glmnet)
+#train data
+yTrain1<-factor(if_else(final_Glm_Trn$loan_status=="Fully Paid",'1','0'))
+xTrain1<-final_Glm_Trn%>%select(-loan_status)
+#test data 
+yTest1<-factor(if_else(Final_Glm_Tst$loan_status=="Fully Paid",'1','0'))
+xTest1<-Final_Glm_Tst%>%select(-loan_status)
+
+glmls_cv<-cv.glmnet(data.matrix(xTrain1),yTrain1,family="binomial")
+summary(glmls_cv)
+glmls_cv$lambda.min
+glmls_cv$lambda.1se
+coef(glmls_cv, s = glmls_cv$lambda.min)
+coef(glmls_cv, s = glmls_cv$lambda.1se)
+plot(glmls_cv)
+glmls_cv$glmnet.fit
+
+#bestlambda is when lambda is min or within 1 standard deviation
+
+which(glmls_cv$lambda == glmls_cv$lambda.1se)
+ glmls_cv$glmnet.fit$dev.ratio[which(glmls_cv$lambda == glmls_cv$lambda.1se) ]
+ 
+ plot(glmls_cv$glmnet.fit)
+ plot(glmls_cv$glmnet.fit,xvar="lambda")
+
+ #cross validation 
+ 
+ glmls_cv_auc<- cv.glmnet(data.matrix(xTrain1), yTrain1, family="binomial", type.measure = "auc")
+plot(glmls_cv_auc)
+glmls_cv_auc$lambda
+glmls_cv_auc$cvm
+
+#Ques 2 a)
+#So, to get the 'loss' value at lambda == lambda.1se
+glmls_cv_auc$cvm [ which(glmls_cv_auc$lambda == glmls_cv_auc$lambda.1se) ]
+
+glmPredls_1=predict ( glmls_cv,data.matrix(xTest1), s="lambda.min" )
+glmPredls_p=predict(glmls_cv,data.matrix(xTest1), s="lambda.min", type="response" )
+
+#testing performance of the model
+table(preds=as.numeric(glmPredls_p>0.5), actual=yTest1)
+confusionMatrix(as.factor(as.numeric(glmPredls_p>0.5)), as.factor(yTest1),positive = '0')
+
+
+#trying for auc
+library(ROCR)
+predsauc <- prediction(glmPredls_p, Final_Glm_Tst$loan_status, label.ordering = c("Charged Off", "Fully Paid"))
+aucPerf <- performance(predsauc, "auc")
+aucPerf@y.values
+
+#ROC curve
+roc_curve <-performance(predsauc, "tpr", "fpr")
+plot(roc_curve)
+abline(a=0, b= 1)
+
+#Lift curve
+liftPerf <-performance(predsauc, "lift", "rpp")
+plot(liftPerf)
+
+percentage_threshold<- c(0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.60,0.65,0.7,0.75,0.8,0.85,0.9)
+pred<-c()
+F1score<-c()
+
+# 
+# for (i in percentage_threshold)
+#   {
+#   
+#   predictions<- factor(ifelse (glmPredls_p>i,'1','0'))  
+#   CM<-table(pred = predictions, true=yTest1)
+#   print(i)
+#   print(CM)
+#   precision <- CM[1,1]/(CM[1,1]+CM[1,2])
+#   recall <- CM[1,1]/(CM[1,1]+CM[2,1])
+#   F1 <- (2 * precision * recall) / (precision + recall)
+#   pred<-append(pred,(CM[1,1]+CM[2,2])/length(predictions))
+#   F1score<- append(F1score,F1)
+# }
+# 
+# plot(percentage_threshold, pred, main="Number of Trees vs Pred",
+#    xlab="Number of Trees ", ylab="Correct Predictions%", pch=19)
+# plot(percentage_threshold, F1score, main="Number of Trees vs F1score",
+#    xlab="Number of Trees ", ylab="F1score", pch=19)
+# 
+
+
+
+#Ridge and Lasso regression
+
+#for ridge regression we set the value of alpha=0 , for lasso we set alpha=1, for elastic regression we set alpha=0.5
+
+#RIDGE regression , setting alpha to 0
+
+
+glmls_cv_a0<- cv.glmnet(data.matrix(xTrain1), yTrain1, family="binomial", alpha=0)
+plot(glmls_cv_a0)
+glmPredls_1a0_=predict ( glmls_cv_a0,data.matrix(xTest1), s="lambda.min" )
+glmPredls_pa01=predict(glmls_cv_a0,data.matrix(xTest1), s="lambda.min", type="response" )
+
+#########################testing performance of the model
+table(preds=as.numeric(glmPredls_pa01>0.5), actual=yTest1)
+confusionMatrix(as.factor(as.numeric(glmPredls_pa01>0.5)), as.factor(yTest1),positive = '0')
+
+#####auc
+library(ROCR)
+predsauc_a0 <- prediction(glmPredls_pa01, Final_Glm_Tst$loan_status, label.ordering = c("Charged Off", "Fully Paid"))
+aucPerf <- performance(predsauc_a0, "auc")
+aucPerf@y.values
+
+###########################ROC curve
+roc_curvea0 <-performance(predsauc_a0, "tpr", "fpr")
+plot(roc_curvea0)
+abline(a=0, b= 1)
+
+##############################Lift curve
+liftPerf <-performance(predsauc_a0, "lift", "rpp")
+plot(liftPerf)
+
+#LASSO regression , setting alpha to 1
+
+glmls_cv_a1<- cv.glmnet(data.matrix(xTrain1), yTrain1, family="binomial", alpha=1)
+
+plot(glmls_cv_a1)
+
+glmPredls_1a1_=predict ( glmls_cv_a1,data.matrix(xTest1), s="lambda.min" )
+glmPredls_pa11=predict(glmls_cv_a1,data.matrix(xTest1), s="lambda.min", type="response" )
+
+#########################testing performance of the model
+table(preds=as.numeric(glmPredls_pa11>0.5), actual=yTest1)
+confusionMatrix(as.factor(as.numeric(glmPredls_pa11>0.5)), as.factor(yTest1),positive = '0')
+
+#####auc
+library(ROCR)
+predsauc_a01 <- prediction(glmPredls_pa11, Final_Glm_Tst$loan_status, label.ordering = c("Charged Off", "Fully Paid"))
+aucPerf <- performance(predsauc_a01, "auc")
+aucPerf@y.values
+
+###########################ROC curve
+roc_curvea01 <-performance(predsauc_a01, "tpr", "fpr")
+plot(roc_curvea01)
+abline(a=0, b= 1)
+
+##############################Lift curve
+liftPerf <-performance(predsauc_a01, "lift", "rpp")
+plot(liftPerf)
+
+#elastic net regression setting alpha to 0.5
+
+glmls_cv_a0.5<- cv.glmnet(data.matrix(xTrain1), yTrain1, family="binomial", alpha=0.5)
+
+plot(glmls_cv_a0.5)
+
+
+glmPredls_1a0.5_=predict ( glmls_cv_a0.5,data.matrix(xTest1), s="lambda.min" )
+glmPredls_pa0.5=predict(glmls_cv_a0.5,data.matrix(xTest1), s="lambda.min", type="response" )
+
+#########################testing performance of the model
+table(preds=as.numeric(glmPredls_1a0.5_>0.5), actual=yTest1)
+confusionMatrix(as.factor(as.numeric(glmPredls_1a0.5_>0.5)), as.factor(yTest1),positive = '0')
+
+#####auc
+library(ROCR)
+predsauc_a0.5 <- prediction(glmPredls_pa0.5, Final_Glm_Tst$loan_status, label.ordering = c("Charged Off", "Fully Paid"))
+aucPerf <- performance(predsauc_a0.5, "auc")
+aucPerf@y.values
+
+###########################ROC curve
+roc_curvea01 <-performance(predsauc_a0.5, "tpr", "fpr")
+plot(roc_curvea01)
+abline(a=0, b= 1)
+
+##############################Lift curve
+liftPerf <-performance(predsauc_a0.5, "lift", "rpp")
+plot(liftPerf)
+
+
+#Experimenting with parameters , changing the value of alpha
+
+
+#10 fold cross validation for each alpha=0,0.1,0.2,0.3,......,1
+
+listOfFits<-c()
+alphaused<-c()
+for(i in 0:10){
+  alphaNames<-paste("alpha", i, sep="")
+  print(alphaNames)
+  current_fit<-cv.glmnet(data.matrix(xTrain1), yTrain1, type.measure="mse", alpha=i/10,family="binomial")
+  listOfFits<- append(listOfFits,current_fit$lambda.1se)
+  alphaused<-append(alphaused,i/10)
+}
+
+plot(alphaused, listOfFits, main="Varying aplha to see Pred",
+   xlab="Number of Trees ", ylab="Correct Predictions%", pch=19)
+
+#Plotting solution and cross-validated MSE as function of λ
+
+plot(glmls_cv_a1)
+#plot(alpha10, main="LASSO")
+
+#ridge
+
+plot(glmls_cv_a0)
+#plot(alpha0, main="RIDGE")
+
+predict ( glmls_cv,data.matrix(xTest1), s="lambda.min" )
+
+```
+
+
+```{r}
+# b) For the linear model, what is the loss function, and link function you use ?
+# (Write the expression for these, and briefly describe)
+
+#explanation in the word file
+
+```
+
+
+```{r}
+#Ques 2 c)
+
+#For XGBoost
+
+profit_val <- 24
+loss_val <- -35
+
+test_preds_prob_dt <- data.frame(preds = xgb_test_preds)
+test_preds_prob_dt <- cbind(test_preds_prob_dt, status=colcdfTst)
+test_preds_prob_dt <- test_preds_prob_dt[order(-test_preds_prob_dt$preds),] 
+test_preds_prob_dt$profit <- ifelse(test_preds_prob_dt$status == 0, profit_val, loss_val)
+test_preds_prob_dt$cumm_profit <- cumsum(test_preds_prob_dt$profit)
+rownames(test_preds_prob_dt) <- 1:nrow(test_preds_prob_dt)
+
+profit_cut_off = 0.5
+test_preds_prob_dt_cutoff <- test_preds_prob_dt[which(test_preds_prob_dt$preds>profit_cut_off),]
+dim(test_preds_prob_dt_cutoff)
+cumm_profit_max <- max(test_preds_prob_dt_cutoff$cumm_profit)
+rownames(test_preds_prob_dt_cutoff) <- 1:nrow(test_preds_prob_dt_cutoff)
+row_num <- rownames(test_preds_prob_dt_cutoff[which.max(test_preds_prob_dt_cutoff$cumm_profit),])
+
+plot(x=rownames(test_preds_prob_dt),y=test_preds_prob_dt$cumm_profit,type='l', xlab= 'Index', ylab= 'Cumulative Profit',main=sprintf('xgboost: At %s Cut Off, cumm_profit = %s ',profit_cut_off,cumm_profit_max))
+abline(h=cumm_profit_max,lty=2)
+
+
+
+#For Linear Model
+
+
+profit_val <- 24
+loss_val <- -35
+
+test_preds_prob_dt <- data.frame(preds = glmPredls_p)
+test_preds_prob_dt <- cbind(test_preds_prob_dt, status=yTest1)
+test_preds_prob_dt <- test_preds_prob_dt[order(-test_preds_prob_dt$lambda.min),] 
+test_preds_prob_dt$profit <- ifelse(test_preds_prob_dt$status == 1, profit_val, loss_val)
+test_preds_prob_dt$cumm_profit <- cumsum(test_preds_prob_dt$profit)
+rownames(test_preds_prob_dt) <- 1:nrow(test_preds_prob_dt)
+
+profit_cut_off = 0.5
+test_preds_prob_dt_cutoff <- test_preds_prob_dt[which(test_preds_prob_dt$lambda.min>profit_cut_off),]
+dim(test_preds_prob_dt_cutoff)
+cumm_profit_max <- max(test_preds_prob_dt_cutoff$cumm_profit)
+rownames(test_preds_prob_dt_cutoff) <- 1:nrow(test_preds_prob_dt_cutoff)
+row_num <- rownames(test_preds_prob_dt_cutoff[which.max(test_preds_prob_dt_cutoff$cumm_profit),])
+
+plot(x=rownames(test_preds_prob_dt),y=test_preds_prob_dt$cumm_profit,type='l', xlab= 'Index', ylab= 'Cumulative Profit',main=sprintf('GLM: At %s Cut Off, cumm_profit = %s ',profit_cut_off,cumm_profit_max))
+abline(h=cumm_profit_max,lty=2)
+
+
+
+```
+
+
+```{r}
+#Ques 2 (d) Examine which variables are found to be important by the best models from the different methods,
+#and comment on similarities, difference. What do you conclude?
+
+
+pca1<-prcomp(data.matrix(xTrain1),scale=TRUE)
+summary(pca1)
+View(pca1)
+plot(pca1, type="l")
+
+
+# 
+# pca2<-princomp(data.matrix(xTrain1),cor=TRUE,scores = TRUE,scale=TRUE)
+# summary(pca2)
+# plot(pca2, type="l")
+
+#view(pca1$sdev)
+
+#we note that the first two components capture most of the variance in the data
+
+
+plot(cumsum(pca1$sdev/sum(pca1$sdev)),ylab = "Cumulaive variance %", xlab = "# components")
+
+library(factoextra)
+
+fviz_pca_var(pca1)
+
+fviz_pca_var(pca1,select.var = list(cos2=20),col.var = "contrib",repel = TRUE)
+
+# As we see from the output of the cumulative variance chart that first 25 variables are capturing the maximum variance(>80%) in the data. Hence, we are considering only these components whicb capture the maximum value in the data
+
+#trg<-predict(pca1,xTrain1)
+#glmls_cv_pca<- cv.glmnet(data.matrix(xTrain1), yTrain1, family="binomial", alpha=1)
+
+
+#Another method of finding the importance of the variables
+
+#for ridge regression 
+
+sorted_varsByImp<-varImp(glmls_cv_a1$glmnet.fit,lambda = glmls_cv_a1$lambda.1se)
+
+#for lasso regression
+
+sorted_varsByImp<-varImp(glmls_cv_a1$glmnet.fit,lambda = glmls_cv_a1$lambda.1se)
+
+
+#for lasso regression with lambda=lambda.min"
+
+sorted_varsByImp<-varImp(glmls_cv_a1$glmnet.fit,lambda = glmls_cv_a1$lambda.min)
+
+
+
+#for elastic regression
+
+
+sorted_varsByImp<-varImp(glmls_cv_a1$glmnet.fit,lambda = glmls_cv_a1$lambda.1se)
+
+
+
+
+```
+
+
+```{r}
+#Question 2e
+
+ #In developing models above, do you find larger training samples to give better models ? Do you find
+#balancing the training data examples across classes to give better models ?
+
+
+#balancing the dataset (training)
+
+balDataGLM<-ovun.sample(loan_status ~ ., data = final_Glm_Trn, method = "over",N = 120000)$data
+round(100*prop.table(table(balDataGLM$loan_status)),digits=2)
+
+#Applying GLM Model
+
+#train data
+yTrain1Bal<-factor(if_else(balDataGLM$loan_status=="Fully Paid",'1','0'))
+xTrain1Bal<-balDataGLM%>%select(-loan_status)
+
+glmls_cvBal<-cv.glmnet(data.matrix(xTrain1Bal),yTrain1Bal,family="binomial")
+summary(glmls_cvBal)
+glmls_cvBal$lambda.min
+glmls_cvBal$lambda.1se
+coef(glmls_cvBal, s = glmls_cvBal$lambda.min)
+coef(glmls_cvBal, s = glmls_cvBal$lambda.1se)
+plot(glmls_cvBal)
+glmls_cvBal$glmnet.fit
+
+#bestlambda is when lambda is min or within 1 standard deviation
+
+which(glmls_cvBal$lambda == glmls_cvBal$lambda.1se)
+ glmls_cvBal$glmnet.fit$dev.ratio[which(glmls_cvBal$lambda == glmls_cvBal$lambda.1se) ]
+ 
+ plot(glmls_cvBal$glmnet.fit)
+ plot(glmls_cvBal$glmnet.fit,xvar="lambda")
+
+ #cross validation 
+ 
+ glmls_cv_aucbal<- cv.glmnet(data.matrix(xTrain1Bal), yTrain1Bal, family="binomial", type.measure = "auc")
+plot(glmls_cv_aucbal)
+glmls_cv_aucbal$lambda
+glmls_cv_aucbal$cvm
+
+#So, to get the 'loss' value at lambda == lambda.1se
+glmls_cv_aucbal$cvm [ which(glmls_cv_aucbal$lambda == glmls_cv_aucbal$lambda.1se) ]
+
+glmPredls_1bal=predict ( glmls_cvBal,data.matrix(xTest1), s="lambda.min" )
+glmPredls_pbal=predict(glmls_cvBal,data.matrix(xTest1), s="lambda.min", type="response" )
+
+#trying for auc
+library(ROCR)
+predsaucbal <- prediction(glmPredls_pbal, Final_Glm_Tst$loan_status, label.ordering = c("Charged Off", "Fully Paid"))
+aucPerfbal <- performance(predsaucbal, "auc")
+aucPerfbal@y.values
+
+#for ridge regression we set the value of alpha=0 , for lasso we set alpha=1, for elastic regression we set alpha=0.5
+
+#RIDGE regression , setting alpha to 0
+
+
+glmls_cv_a0Bal<- cv.glmnet(data.matrix(xTrain1Bal), yTrain1Bal, family="binomial", alpha=0)
+
+plot(glmls_cv_a0Bal)
+
+glmPredls_pbala0=predict(glmls_cv_a0Bal,data.matrix(xTest1), s="lambda.min", type="response" )
+
+predsaucbal_a0 <- prediction(glmPredls_pbala0, Final_Glm_Tst$loan_status, label.ordering = c("Charged Off", "Fully Paid"))
+aucPerfbala0 <- performance(predsaucbal_a0, "auc")
+aucPerfbala0@y.values
+
+###########################ROC curve
+roc_curvea01bb <-performance(predsaucbal_a0, "tpr", "fpr")
+plot(roc_curvea01bb)
+abline(a=0, b= 1)
+
+##############################Lift curve
+liftPerf <-performance(predsaucbal_a0, "lift", "rpp")
+plot(liftPerf)
+
+
+
+
+#LASSO regression , setting alpha to 1
+
+glmls_cv_a1Bal<- cv.glmnet(data.matrix(xTrain1Bal), yTrain1Bal, family="binomial", alpha=1)
+
+plot(glmls_cv_a1Bal)
+
+glmPredls_pbala1=predict(glmls_cv_a1Bal,data.matrix(xTest1), s="lambda.min", type="response" )
+
+predsaucbal_a1 <- prediction(glmPredls_pbala1, Final_Glm_Tst$loan_status, label.ordering = c("Charged Off", "Fully Paid"))
+aucPerfbala1 <- performance(predsaucbal_a1, "auc")
+aucPerfbala1@y.values
+
+###########################ROC curve
+roc_curvea01b <-performance(predsaucbal_a1, "tpr", "fpr")
+plot(roc_curvea01b)
+abline(a=0, b= 1)
+
+##############################Lift curve
+liftPerf <-performance(predsaucbal_a1, "lift", "rpp")
+plot(liftPerf)
+
+
+
+```
+
+
+```{r, question_3}
+#### rf
+
+set.seed(273)
+
+library(dplyr)
+library(caret)
+
+new_data_withaddedCols <- new_data1
+
+new_data_withaddedCols <- cbind(new_data1, new_data %>% select(actualReturn, actualTerm))
+
+
+PROP = 0.7  #proportion of examples in the training sample
+nr<-nrow(new_data_withaddedCols)
+trnIndex<- sample(1:nr, size = round(PROP * nr), replace=FALSE)
+
+lcdfTrn <- new_data_withaddedCols[trnIndex, ]
+lcdfTst <- new_data_withaddedCols[-trnIndex, ]
+
+# commenting the parameter set 1,2,3 as set-4 paramters are the best
+
+#parameter set-1
+#rfModel_Ret <- ranger(actualReturn ~., data=lcdfTrn %>% select(-actualTerm, -loan_status), num.trees =200, mtry = 6, importance='permutation')
+
+#Train
+#rfPredRet_trn<- predict(rfModel_Ret, lcdfTrn %>% select(-actualTerm, -loan_status))
+#sqrt(mean( (rfPredRet_trn$predictions - lcdfTrn$actualReturn)^2))
+
+#plot ( (predict(rfModel_Ret, lcdfTrn))$predictions, lcdfTrn$actualReturn)
+
+#Test
+#rfPredRet_tst<- predict(rfModel_Ret, lcdfTst %>% select(-actualTerm, -loan_status))
+#sqrt(mean( (rfPredRet_tst$predictions - lcdfTst$actualReturn)^2))
+
+#plot ( (predict(rfModel_Ret, lcdfTst))$predictions, lcdfTst$actualReturn)
+
+#parameter set-2
+#rfModel_Ret <- ranger(actualReturn ~., data=lcdfTrn %>% select(-actualTerm, -loan_status), num.trees =200, mtry = 7, importance='permutation')
+
+#Train
+#rfPredRet_trn<- predict(rfModel_Ret, lcdfTrn %>% select(-actualTerm, -loan_status))
+#sqrt(mean( (rfPredRet_trn$predictions - lcdfTrn$actualReturn)^2))
+
+#plot ( (predict(rfModel_Ret, lcdfTrn))$predictions, lcdfTrn$actualReturn)
+
+#Test
+#rfPredRet_tst<- predict(rfModel_Ret, lcdfTst %>% select(-actualTerm, -loan_status))
+#sqrt(mean( (rfPredRet_tst$predictions - lcdfTst$actualReturn)^2))
+
+#plot ( (predict(rfModel_Ret, lcdfTst))$predictions, lcdfTst$actualReturn)
+
+#parameter set-3
+#rfModel_Ret <- ranger(actualReturn ~., data=lcdfTrn %>% select(-actualTerm, -loan_status), num.trees =500, mtry = 6, importance='permutation')
+
+
+#Train
+#rfPredRet_trn<- predict(rfModel_Ret, lcdfTrn %>% select(-actualTerm, -loan_status))
+#sqrt(mean( (rfPredRet_trn$predictions - lcdfTrn$actualReturn)^2))
+
+#plot ( (predict(rfModel_Ret, lcdfTrn))$predictions, lcdfTrn$actualReturn)
+
+#Test
+#rfPredRet_tst<- predict(rfModel_Ret, lcdfTst %>% select(-actualTerm, -loan_status))
+#sqrt(mean( (rfPredRet_tst$predictions - lcdfTst$actualReturn)^2))
+
+#plot ( (predict(rfModel_Ret, lcdfTst))$predictions, lcdfTst$actualReturn)
+
+
+#parameter set-4
+rfModel_Ret <- ranger(actualReturn ~., data=lcdfTrn %>% select(-actualTerm, -loan_status), num.trees =750, mtry = 6, importance='permutation')
+
+#Train
+rfPredRet_trn<- predict(rfModel_Ret, lcdfTrn %>% select(-actualTerm, -loan_status))
+sqrt(mean( (rfPredRet_trn$predictions - lcdfTrn$actualReturn)^2))
+
+plot ( (predict(rfModel_Ret, lcdfTrn))$predictions, lcdfTrn$actualReturn)
+
+#Test
+rfPredRet_tst<- predict(rfModel_Ret, lcdfTst %>% select(-actualTerm, -loan_status))
+sqrt(mean( (rfPredRet_tst$predictions - lcdfTst$actualReturn)^2))
+
+plot ( (predict(rfModel_Ret, lcdfTst))$predictions, lcdfTst$actualReturn)
+
+
+#Performance by deciles on Train
+predRet_Trn <- lcdfTrn %>% select(grade, loan_status, actualReturn, actualTerm, int_rate) %>% mutate(predRet=(rfPredRet_trn$predictions))
+predRet_Trn <- predRet_Trn %>% mutate(tile=ntile(-predRet, 10))
+predRet_Trn %>% group_by(tile) %>% summarise(count=n(), avgpredRet=mean(predRet), numDefaults=sum(loan_status=="Charged Off"),
+avgActRet=mean(actualReturn), minRet=min(actualReturn), maxRet=max(actualReturn), avgTer=mean(actualTerm), totA=sum(grade=="A"), totB=sum(grade=="B"
+), totC=sum(grade=="C"), totD=sum(grade=="D"), totE=sum(grade=="E"), totF=sum(grade=="F"), totG=sum(grade=="G"))
+
+
+#Performance by deciles on Test
+predRet_Tst <- lcdfTst %>% select(grade, loan_status, actualReturn, actualTerm, int_rate) %>% mutate(predRet=(rfPredRet_tst$predictions))
+predRet_Tst <- predRet_Tst %>% mutate(tile=ntile(-predRet, 10))
+predRet_Tst %>% group_by(tile) %>% summarise(count=n(), avgpredRet=mean(predRet), numDefaults=sum(loan_status=="Charged Off"),
+avgActRet=mean(actualReturn), minRet=min(actualReturn), maxRet=max(actualReturn), avgTer=mean(actualTerm), totA=sum(grade=="A"), totB=sum(grade=="B"
+), totC=sum(grade=="C"), totD=sum(grade=="D"), totE=sum(grade=="E"), totF=sum(grade=="F"), totG=sum(grade=="G"))
+
+
+```
+
+
+```{r, question_3}
+
+set.seed(273)
+
+#######
+#glm
+
+
+library(glmnet)
+xD<-lcdfTrn %>% select(-loan_status, -actualTerm, -actualReturn)
+glmRet_cv<- cv.glmnet(data.matrix(xD), lcdfTrn$actualReturn, family="gaussian")
+
+
+# on training data 
+predRet_Trn <- lcdfTrn %>% select(grade, loan_status, actualReturn, actualTerm, int_rate) %>% mutate(predRet= predict(glmRet_cv, data.matrix(lcdfTrn %>% select(-loan_status, -actualTerm, -actualReturn)),
+s="lambda.min" ) )
+predRet_Trn <- predRet_Trn %>% mutate(tile=ntile(-predRet, 10))
+predRet_Trn %>% group_by(tile) %>% summarise(count=n(), avgpredRet=mean(predRet), numDefaults=sum(loan_status=="Charged Off"),
+avgActRet=mean(actualReturn), minRet=min(actualReturn), maxRet=max(actualReturn), avgTer=mean(actualTerm), totA=sum(grade=="A"),
+totB=sum(grade=="B" ), totC=sum(grade=="C"), totD=sum(grade=="D"), totE=sum(grade=="E"), totF=sum(grade=="F"), totG=sum(grade=="G") )
+
+# on test data 
+predRet_Tst <- lcdfTst %>% select(grade, loan_status, actualReturn, actualTerm, int_rate) %>% mutate(predRet= predict(glmRet_cv, data.matrix(lcdfTst %>% select(-loan_status, -actualTerm, -actualReturn)),
+s="lambda.min" ) )
+predRet_Tst <- predRet_Tst %>% mutate(tile=ntile(-predRet, 10))
+predRet_Tst %>% group_by(tile) %>% summarise(count=n(), avgpredRet=mean(predRet), numDefaults=sum(loan_status=="Charged Off"),
+avgActRet=mean(actualReturn), minRet=min(actualReturn), maxRet=max(actualReturn), avgTer=mean(actualTerm), totA=sum(grade=="A"),
+totB=sum(grade=="B" ), totC=sum(grade=="C"), totD=sum(grade=="D"), totE=sum(grade=="E"), totF=sum(grade=="F"), totG=sum(grade=="G") )
+
+```
+
+
+```{r, question_3}
+
+set.seed(273)
+
+#xgb model
+dummy_vars_<-dummyVars(~.,data=new_data_withaddedCols%>% select(-loan_status))
+dummied_ds<-predict(dummy_vars_, new_data_withaddedCols)
+
+#Splitting into Train and Test  
+dxlcdfTrn<-dummied_ds[trnIndex,]
+colcdfTrn<-new_data_withaddedCols$actualReturn[trnIndex]
+dxlcdfTst<-dummied_ds[-trnIndex,]
+colcdfTst<-new_data_withaddedCols$actualReturn[-trnIndex]
+
+dxTrn<-xgb.DMatrix( subset(dxlcdfTrn, select=-c(actualTerm,actualReturn)), label=colcdfTrn)
+dxTst<-xgb.DMatrix( subset( dxlcdfTst,select=-c(actualTerm,actualReturn)), label=colcdfTst)
+
+xgb_watchlist<-list(train = dxTrn, eval= dxTst)
+
+xgb_grid = expand.grid(eta = c(0.01, 0.001, 0.0001),
+                       max_depth = c(2, 5))
+
+for(i in 1:nrow(xgb_grid)) {
+  xgb_tune<-xgboost(data=dxTrn,booster='gbtree',objective = "reg:linear",nrounds=1000, eta=xgb_grid$eta[i],xgb_watchlist, max_depth=xgb_grid$max_depth[i], early_stopping_rounds = 10,scale_pos_weight = 9,col_sample_bytree=0.6,min_child_weight=1,eval_metric='rmse')
+  xgb_grid$bestTree[i] <-xgb_tune$evaluation_log[xgb_tune$best_iteration]$iter
+  xgb_grid$bestPerf[i] <-xgb_tune$evaluation_log[xgb_tune$best_iteration]$train_rmse
+}
+  
+xgb_grid <- xgb_grid[order(xgb_grid$bestPerf),]
+xgb_grid
+
+xgbParam<-list (
+max_depth= 5, eta = 0.01,
+booster='gbtree',
+objective = "reg:linear",
+col_sample_bytree=0.6,
+scale_pos_weight = 9,
+min_child_weight=1,
+eval_metric= "rmse")
+
+#Use best parameters and perform cross-validation
+set.seed(273)
+xgb_cv<-xgb.cv( xgbParam, dxTrn, nrounds= 1000,xgb_watchlist, nfold=5, early_stopping_rounds= 10 )
+
+#best iteration
+xgb_cv$best_iteration
+
+xgb_ret_best<-xgb.train( xgbParam, dxTrn,nrounds= xgb_cv$best_iteration)
+#variable importance
+xgb.importance(model = xgb_ret_best) %>% view()
+
+#on train
+xgb_ret_preds_train <- predict(xgb_ret_best,dxTrn)
+sqrt(mean((xgb_ret_preds_train-lcdfTrn$actualReturn)^2))
+plot(xgb_ret_preds_train,lcdfTrn$actualReturn)
+
+table_pred_ret_train<-lcdfTrn%>% select(grade,loan_status, actualReturn, actualTerm, int_rate) %>% mutate(preds=xgb_ret_preds_train)
+
+table_pred_ret_train<-table_pred_ret_train%>% mutate(tile=ntile(-preds, 10))
+table_pred_ret_train%>% group_by(tile) %>% summarise(count=n(), avgpredRet=mean(preds), numDefaults=sum(loan_status=="Charged Off"), avgActRet=mean(actualReturn), minRet=min(actualReturn), maxRet=max(actualReturn), avgTer=mean(actualTerm), totA=sum(grade=="A"), totB=sum(grade=="B" ), totC=sum(grade=="C"), totD=sum(grade=="D"), totE=sum(grade=="E"), totF=sum(grade=="F"),totG=sum(grade=="G"))
+
+
+#on validation
+xgb_ret_preds_test <- predict(xgb_ret_best,dxTst)
+sqrt(mean((xgb_ret_preds_test-lcdfTst$actualReturn)^2))
+plot(xgb_ret_preds_test,lcdfTst$actualReturn)
+
+xgb_ret_preds_test<-lcdfTst%>% select(grade,loan_status, actualReturn, actualTerm, int_rate) %>% mutate(preds=xgb_ret_preds_test)
+
+xgb_ret_preds_test<-xgb_ret_preds_test%>% mutate(tile=ntile(-preds, 10))
+xgb_ret_summ_tbl <- xgb_ret_preds_test%>% group_by(tile) %>% summarise(count=n(), avgpredRet=mean(preds), numDefaults=sum(loan_status=="Charged Off"), avgActRet=mean(actualReturn), minRet=min(actualReturn), maxRet=max(actualReturn), avgTer=mean(actualTerm), totA=sum(grade=="A"), totB=sum(grade=="B" ), totC=sum(grade=="C"), totD=sum(grade=="D"), totE=sum(grade=="E"), totF=sum(grade=="F"),totG=sum(grade=="G"))
+
+
+```
+
+
+```{r , question_4}
+
+#Question 4
+
+set.seed(273)
+#from question-1
+xgb_preds_status<-predict(xgb_best,dxTst)
+xgb_scores_status <- lcdfTst%>% select(grade, loan_status, actualReturn, actualTerm, int_rate) %>% mutate(score=xgb_preds_status)
+xgb_scores_status<-xgb_scores_status%>% mutate(tile=ntile(-score, 10))
+xgb_scores_status%>% group_by(tile) %>% summarise(count=n(), avgSc=mean(score), numDefaults=sum(loan_status=="Charged Off"), avgActRet=mean(actualReturn), minRet=min(actualReturn), maxRet=max(actualReturn), avgTer=mean(actualTerm), totA=sum(grade=="A"), totB=sum(grade=="B" ), totC=sum(grade=="C"), totD=sum(grade=="D"), totE=sum(grade=="E"), totF=sum(grade=="F"), totG=sum(grade=="G") )
+
+#from question-3
+xgb_preds_returns <- predict(xgb_ret_best,dxTst)
+xgb_scores_returns<-lcdfTst%>% select(grade, loan_status, actualReturn, actualTerm, int_rate) %>%
+mutate(pred_ret=xgb_preds_returns)
+xgb_scores_returns<-xgb_scores_returns%>% mutate(tile=ntile(-pred_ret, 10))
+xgb_scores_returns%>% group_by(tile) %>% summarise(count=n(), avgPredRet=mean(pred_ret), numDefaults=sum(loan_status=="Charged Off"), avgActRet=mean(actualReturn), minRet=min(actualReturn), maxRet=max(actualReturn), avgTer=mean(actualTerm), totA=sum(grade=="A"), totB=sum(grade=="B" ), totC=sum(grade=="C"), totD=sum(grade=="D"), totE=sum(grade=="E"), totF=sum(grade=="F"), totG=sum(grade=="G") )
+
+#Approach 1
+d=1
+comb_score<-xgb_scores_returns%>% mutate(prob_score=xgb_scores_status$score)
+comb_tbl<-comb_score%>% filter(tile<=d)
+comb_tbl<-comb_tbl%>% mutate(tile2=ntile(-prob_score, 20))
+table_app1 <- comb_tbl%>% group_by(tile2) %>% summarise(count=n(), avgPredRet=mean(pred_ret), numDefaults=sum(loan_status=="Charged Off"), avgActRet=mean(actualReturn), minRet=min(actualReturn), maxRet=max(actualReturn), avgTer=mean(actualTerm), totA=sum(grade=="A"), totB=sum(grade=="B" ),totC=sum(grade=="C"), totD=sum(grade=="D"), totE=sum(grade=="E"), totF=sum(grade=="F"), totG=sum(grade=="G"))
+
+
+#Approach 2
+#considering top d decile from M2
+table_app2<-comb_tbl%>% mutate(expRet=pred_ret*prob_score)
+table_app2<-table_app2%>% mutate(tile2=ntile(-expRet, 20))
+table_app2 <- table_app2%>% group_by(tile2) %>% summarise(count=n(), avgPredRet=mean(pred_ret), numDefaults=sum(loan_status=="Charged Off"), avgActRet=mean(actualReturn), minRet=min(actualReturn), maxRet=max(actualReturn), avgTer=mean(actualTerm), totA=sum(grade=="A"), totB=sum(grade=="B" ), totC=sum(grade=="C"), totD=sum(grade=="D"), totE=sum(grade=="E"), totF=sum(grade=="F"), totG=sum(grade=="G") )
+
+table_app1
+table_app2
+
+plot(x=table_app1$tile2, y=table_app1$avgPredRet,type='l',col='red',xlim=c(0,20),ylim=c(0,10))
+lines(x=table_app1$tile2, y=table_app1$avgActRet,type='l',col='green')
+legend(x = 12,y=3, legend=c('Predicted Returns', 'Actual Returns'),col=c('red', 'green'),lty=1)
+
+plot(x=table_app2$tile2, y=table_app2$avgPredRet,type='l',col='red',xlim=c(0,20),ylim=c(0,10))
+lines(x=table_app2$tile2, y=table_app2$avgActRet,type='l',col='green')
+legend(x = 12,y=3, legend=c('Predicted Returns', 'Actual Returns'),col=c('red', 'green'),lty=1)
+
+
+
+```
+
+
+
+```{r , question_5}
+
+set.seed(273)
+
+
+lg_train_ds <- lcdfTrn%>% filter(grade=='C'| grade=='D'| grade== 'E'| grade== 'F'| grade== 'G')
+lg_test_ds<-lcdfTst%>% filter(grade=='C'| grade=='D'| grade== 'E'| grade== 'F'| grade== 'G')
+
+trn_dummy_vars_<-dummyVars(~.,data=lg_train_ds%>% select(-loan_status))
+train_ds_dummied<-predict(trn_dummy_vars_, lg_train_ds)
+
+tst_dummy_vars_<-dummyVars(~.,data=lg_test_ds%>% select(-loan_status))
+test_ds_dummied<-predict(tst_dummy_vars_, lg_test_ds)
+
+target_class2ind<-class2ind(lg_train_ds$loan_status, drop2nd = FALSE)
+train_lbl<-target_class2ind[ , 2] # Selected Fully Paid
+
+target_class2ind<-class2ind(lg_test_ds$loan_status, drop2nd = FALSE)
+test_lbl<-target_class2ind[ , 2] # Selected Fully Paid
+
+train_ds_matrix<-xgb.DMatrix( subset(train_ds_dummied, select=-c(actualTerm,actualReturn)), label=train_lbl)
+test_ds_matrix<-xgb.DMatrix( subset( test_ds_dummied,select=-c(actualTerm,actualReturn)), label=test_lbl)
+
+xgb_watchlist<-list(train = train_ds_matrix, eval= test_ds_matrix)
+
+xgbParam<-list (
+max_depth= 5, eta = 0.01,
+booster='gbtree',
+objective = "binary:logistic",
+col_sample_bytree=0.6,
+scale_pos_weight=9,
+min_child_weight=1,
+eval_metric="error", eval_metric= "auc")
+
+#Use best parameters and perform cross-validation
+set.seed(213)
+xgb_lg_cv<-xgb.cv( xgbParam, train_ds_matrix, nrounds= 1000,xgb_watchlist, nfold=5, early_stopping_rounds= 10)
+
+#best iteration
+xgb_lg_cv$best_iteration
+best_cvIter<-which.max(xgb_lg_cv$evaluation_log$test_auc_mean)
+
+xgb_lg_best<-xgb.train( xgbParam, train_ds_matrix,nrounds= best_cvIter)
+
+
+
+#returns model
+train_lbl<-lg_train_ds$actualReturn
+test_lbl<-lg_test_ds$actualReturn
+
+train_ds_matrix<-xgb.DMatrix( subset(train_ds_dummied, select=-c(actualTerm,actualReturn)), label=train_lbl)
+test_ds_matrix<-xgb.DMatrix( subset( test_ds_dummied,select=-c(actualTerm,actualReturn)), label=test_lbl)
+
+xgb_watchlist<-list(train = train_ds_matrix, eval= test_ds_matrix)
+
+xgb_grid = expand.grid(eta = c(0.01, 0.001, 0.0001),
+                       max_depth = c(2, 5))
+
+for(i in 1:nrow(xgb_grid)) {
+  xgb_tune<-xgboost(data=train_ds_matrix,booster='gbtree',objective = "reg:linear",nrounds=1000, eta=xgb_grid$eta[i],xgb_watchlist, max_depth=xgb_grid$max_depth[i], early_stopping_rounds = 10,scale_pos_weight = 9,col_sample_bytree=0.6,min_child_weight=1,eval_metric='rmse')
+  xgb_grid$bestTree[i] <-xgb_tune$evaluation_log[xgb_tune$best_iteration]$iter
+  xgb_grid$bestPerf[i] <-xgb_tune$evaluation_log[xgb_tune$best_iteration]$train_rmse
+}
+  
+xgb_grid <- xgb_grid[order(xgb_grid$bestPerf),]
+xgb_grid
+
+xgbParam<-list (
+max_depth= 5, eta = 0.01,
+booster='gbtree',
+objective = "reg:linear",
+col_sample_bytree=0.6,
+scale_pos_weight = 9,
+min_child_weight=1,
+eval_metric= "rmse")
+
+#Use best parameters and perform cross-validation
+set.seed(213)
+xgb_lg_cv<-xgb.cv( xgbParam, train_ds_matrix, nrounds= 1000,xgb_watchlist, nfold=5, early_stopping_rounds= 10 )
+
+#best iteration
+xgb_lg_cv$best_iteration
+
+xgb_lg_ret_best<-xgb.train( xgbParam, train_ds_matrix,nrounds= xgb_cv$best_iteration)
+#variable importance
+xgb.importance(model = xgb_lg_ret_best) %>% view()
+
+#on validation
+xgb_lg_ret_preds_test <- predict(xgb_lg_ret_best,test_ds_matrix)
+sqrt(mean((xgb_lg_ret_preds_test-lg_test_ds$actualReturn)^2))
+
+#plot(x=xgb_lg_ret_summ_tbl$tile,y=xgb_lg_ret_summ_tbl$avgpredRet,type='l',col='red',xlim=c(0,10),ylim=c(0,10))
+#lines(x=xgb_lg_ret_summ_tbl$tile, y=xgb_lg_ret_summ_tbl$avgActRet,type='l',col='green')
+#legend(x = 4,legend=c('Predicted Returns', 'Actual Returns'),col=c('red', 'green'),lty=1)
+
+
+
+#Combining Models by Approach 2
+score_table1<-lg_test_ds%>% select(grade, loan_status, actualReturn, actualTerm, int_rate) %>% mutate(score=(predict(xgb_lg_best,test_ds_matrix)))
+score_table1<-score_table1%>% mutate(tile=ntile(-score, 10))
+score_table1%>% group_by(tile) %>% summarise(count=n(), avgSc=mean(score), numDefaults=sum(loan_status=="Charged Off"), avgActRet=mean(actualReturn), minRet=min(actualReturn), maxRet=max(actualReturn), avgTer=mean(actualTerm), totA=sum(grade=="A"), totB=sum(grade=="B" ), totC=sum(grade=="C"), totD=sum(grade=="D"), totE=sum(grade=="E"), totF=sum(grade=="F"),totG=sum(grade=="G"))
+
+returns_table1<-lg_test_ds%>% select(grade,loan_status, actualReturn, actualTerm, int_rate) %>% mutate(preds=xgb_lg_ret_preds_test)
+returns_table1<-returns_table1%>% mutate(tile=ntile(-preds,10))
+returns_table1%>% group_by(tile) %>% summarise(count=n(), avgpredRet=mean(preds), numDefaults=sum(loan_status=="Charged Off"), avgActRet=mean(actualReturn), minRet=min(actualReturn), maxRet=max(actualReturn), avgTer=mean(actualTerm), totA=sum(grade=="A"), totB=sum(grade=="B" ), totC=sum(grade=="C"), totD=sum(grade=="D"), totE=sum(grade=="E"), totF=sum(grade=="F"),totG=sum(grade=="G"))
+
+
+#considering top d decile from M2
+d=1
+comb_score<-returns_table1%>% mutate(prob_score=score_table1$score)
+comb_tbl<-comb_score%>% filter(tile<=d)
+comb_tbl<-comb_tbl%>% mutate(tile=ntile(-prob_score, 20))
+
+
+table_app1 <- comb_tbl%>% group_by(tile) %>% summarise(count=n(), avgPredRet=mean(preds), numDefaults=sum(loan_status=="Charged Off"), avgActRet=mean(actualReturn), minRet=min(actualReturn), maxRet=max(actualReturn), avgTer=mean(actualTerm), totA=sum(grade=="A"), totB=sum(grade=="B" ),totC=sum(grade=="C"), totD=sum(grade=="D"), totE=sum(grade=="E"), totF=sum(grade=="F"),totG=sum(grade=="G"))
+
+table_app1
+
+plot(x=table_app1$tile, y=table_app1$avgPredRet,type='l',col='red',xlim=c(0,20),ylim=c(0,12))
+lines(x=table_app1$tile, y=table_app1$avgActRet,type='l',col='green')
+legend(x = 5,legend=c('Predicted Returns', 'Actual Returns'),col=c('red', 'green'),lty=1)
+
+table_app2<-comb_tbl%>% mutate(expRet=preds*prob_score)
+table_app2<-table_app2%>% mutate(tile2=ntile(-expRet, 20))
+table_app2 <- table_app2%>% group_by(tile2) %>% summarise(count=n(), avgPredRet=mean(preds), numDefaults=sum(loan_status=="Charged Off"), avgActRet=mean(actualReturn), minRet=min(actualReturn), maxRet=max(actualReturn), avgTer=mean(actualTerm), totA=sum(grade=="A"), totB=sum(grade=="B" ), totC=sum(grade=="C"), totD=sum(grade=="D"), totE=sum(grade=="E"), totF=sum(grade=="F"),totG=sum(grade=="G"))
+
+table_app2
+
+plot(x=table_app2$tile2, y=table_app2$avgPredRet,type='l',col='red',xlim=c(0,20),ylim=c(0,12))
+lines(x=table_app2$tile2, y=table_app2$avgActRet,type='l',col='green')
+legend(x = 5,legend=c('Predicted Returns', 'Actual Returns'),col=c('red', 'green'),lty=1)
+
+
+
+```
+
+
