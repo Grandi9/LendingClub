@@ -1,5 +1,5 @@
 ---
-title: "Assignment 2 - Models for investment decisions in LendingClub loans"
+title: "Models for investment decisions in LendingClub loans"
 output: html_document
 ---
 
