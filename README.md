@@ -18,6 +18,10 @@ banks. (https://www.lendingclub.com/)
 
 ##Part-5: xgBoost
 
+##Part-6 Linear Models
+
+##Which grades to invest in to maximize the the profit from investing in LC loans
+
 
 
 
