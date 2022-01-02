@@ -8,6 +8,8 @@ processes dodging the traditional loan process. One of the biggest advantages of
 is that the loans are offered at a much lesser interest rate than the loans offered by conventional
 banks. (https://www.lendingclub.com/)
 
+In this project, I analyzed Lending Club data from 2013 to 2015, totaling 100K observations. The goal is to create various models that can predict which loans are likely to default. To predict loan default rates and devise an investment strategy, various models such as Decision Trees, Random Forest, Boosting models, and linear models were developed.
+
 ##Part-1: Data Exploration
 
 ##Part-2: Data Cleaning
