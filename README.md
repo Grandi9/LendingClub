@@ -54,6 +54,7 @@ Since the ratio between the Fully paid and charged off is different we have deci
 Principle Component Analysis:
 
 As we see from the output of the cumulative variance chart the first 25 variables are capturing the maximum variance(>80%) in the data.
+
 ![image](https://user-images.githubusercontent.com/22790699/150663876-16e3084a-0e77-44e4-afee-68a6908ea870.png)
 
 Variable Importance:
