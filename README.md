@@ -48,7 +48,8 @@ Since the ratio between the Fully paid and charged off is different we have deci
 
 ![image](https://user-images.githubusercontent.com/22790699/150662254-772a0cdf-3efb-4839-a961-b59fd02e8c39.png)
 
-![image](https://user-images.githubusercontent.com/22790699/150662275-e87a8420-655b-41a1-aad4-350394835e75.png)
+![image](https://user-images.githubusercontent.com/22790699/150662376-3891358f-c8bb-4e4e-ad3b-aac519f58eb1.png)
+
 
 
 ##Which grades to invest in to maximize the the profit from investing in LC loans
