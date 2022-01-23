@@ -46,10 +46,19 @@ Since the ratio between the Fully paid and charged off is different we have deci
 
 ## Model building: 
 
-![image](https://user-images.githubusercontent.com/22790699/150662254-772a0cdf-3efb-4839-a961-b59fd02e8c39.png)
+![image](https://user-images.githubusercontent.com/22790699/150663900-7e54af05-f70c-4b32-a6d6-bd0094360edc.png)
+
 
 ![image](https://user-images.githubusercontent.com/22790699/150662376-3891358f-c8bb-4e4e-ad3b-aac519f58eb1.png)
 
+Principle Component Analysis:
+
+As we see from the output of the cumulative variance chart the first 25 variables are capturing the maximum variance(>80%) in the data.
+![image](https://user-images.githubusercontent.com/22790699/150663876-16e3084a-0e77-44e4-afee-68a6908ea870.png)
+
+Variable Importance:
+
+![image](https://user-images.githubusercontent.com/22790699/150663926-ebb01d03-ede2-4609-84a7-7d4fa281f92e.png)
 
 
 ##Which grades to invest in to maximize the the profit from investing in LC loans
