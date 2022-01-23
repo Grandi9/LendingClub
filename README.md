@@ -42,14 +42,14 @@ I calculated the area under the curve for the ROC curve. I then used the pROC li
 ### Descending order of their AUC values
 ![image](https://user-images.githubusercontent.com/22790699/150662104-fa895d16-af4d-4388-ba8c-8ba8aaa72b56.png)
 
+Since the ratio between the Fully paid and charged off is different we have decided to oversample the lower set - Charged Off data.
 
-## Part-3: Decison Tree models
+## Model building: 
 
-## Part-4: Random Forest
+![image](https://user-images.githubusercontent.com/22790699/150662254-772a0cdf-3efb-4839-a961-b59fd02e8c39.png)
 
-## Part-5: xgBoost
+![image](https://user-images.githubusercontent.com/22790699/150662275-e87a8420-655b-41a1-aad4-350394835e75.png)
 
-## Part-6 Linear Models
 
 ##Which grades to invest in to maximize the the profit from investing in LC loans
 
