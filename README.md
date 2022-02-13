@@ -53,9 +53,6 @@ Since the ratio between the Fully paid and charged off is different we have deci
 
 ## Model building: 
 
-![image](https://user-images.githubusercontent.com/22790699/150663900-7e54af05-f70c-4b32-a6d6-bd0094360edc.png)
-
-
 ![image](https://user-images.githubusercontent.com/22790699/150662376-3891358f-c8bb-4e4e-ad3b-aac519f58eb1.png)
 
 Principle Component Analysis:
