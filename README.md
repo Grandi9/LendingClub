@@ -24,6 +24,13 @@ In this project, I analyzed Lending Club data from 2013 to 2015, totaling 100K o
 ### The time is taken to pay off the loans from Grade A to G increases.
 ![image](https://user-images.githubusercontent.com/22790699/150661936-09b56708-a2b9-4925-8651-269ff34c9357.png)
 
+### Purpose of borrwing the money 
+![image](https://user-images.githubusercontent.com/22790699/153737798-2f62268d-454b-448d-9a78-503b087255eb.png)
+
+### We can see that OpenAccratio is increasing from Grade A to G
+![image](https://user-images.githubusercontent.com/22790699/153737876-e1fd389f-75ba-4b30-843b-8fe6158f0183.png)
+
+
 ## Data Cleaning
 
 I am removing two sets of variables:
