@@ -10,6 +10,11 @@ banks. (https://www.lendingclub.com/)
 
 In this project, I analyzed Lending Club data from 2013 to 2015, totaling 100K observations. The goal is to create various models that can predict which loans are likely to default. To predict loan default rates and devise an investment strategy, various models such as Decision Trees, Random Forest, Boosting models, and linear models were developed.
 
+•	Constructed different models such as Linear (glm), Boosted (xgBoost), Random forests and Decision trees (c50 and rpart).
+
+•	Performed parameter tuning and cross-validation measures on the machine learning models to improve the accuracy/sensitivity.
+
+
 ## Data Exploration 
 
 ### Distribution of the loans:
